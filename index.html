@@ -1,644 +1,1077 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toki Pona Master</title>
-    
+    <title>Toki Pona Öğren</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-
+    <link href="https://fonts.googleapis.com/css2?family=Lora:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --green: #22c55e;
-            --green-dark: #16a34a;
-            --green-glow: rgba(34,197,94,0.25);
-            --ink: #0f1117;
-            --paper: #f8f7f3;
-            --muted: #9ca3af;
-            --card-border: #e8e4dc;
+            --bg:#0e0c0a; --sf:#181410; --sf2:#211c16; --bd:#352c22;
+            --ac:#e09050; --ac2:rgba(224,144,80,.14);
+            --tl:#38a89a; --tl2:rgba(56,168,154,.14);
+            --gd:#d4a835;
+            --tx:#f2e8dc; --tx2:#8a7a68;
+            --rd:#c04848; --rd2:rgba(192,72,72,.14);
+            --gn:#4a9860; --gn2:rgba(74,152,96,.14);
+            --bl:#4a7fc0; --bl2:rgba(74,127,192,.14);
         }
-
-        * { box-sizing: border-box; }
-        body {
-            font-family: 'Sora', sans-serif;
-            background-color: var(--paper);
-            color: var(--ink);
-            touch-action: manipulation;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        /* ── Animations ─────────────────── */
-        @keyframes slideUp   { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
-        @keyframes pop       { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
-        @keyframes shake     { 0%,100% { transform:translateX(0); } 20%,60% { transform:translateX(-8px); } 40%,80% { transform:translateX(8px); } }
-        @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.4; } }
-        @keyframes confetti  { 0% { transform:translateY(0) rotate(0deg); opacity:1; } 100% { transform:translateY(-60px) rotate(360deg); opacity:0; } }
-
-        .slide-up  { animation: slideUp .35s cubic-bezier(.22,1,.36,1) forwards; }
-        .pop       { animation: pop .3s ease; }
-        .shake     { animation: shake .4s ease; }
-
-        /* ── Progress bar ───────────────── */
-        .progress-bar { height: 8px; background: var(--card-border); border-radius: 99px; overflow:hidden; }
-        .progress-fill { height:100%; background: var(--green); border-radius:99px; transition: width .4s cubic-bezier(.22,1,.36,1); }
-
-        /* ── Quiz option cards ───────────── */
-        .opt-btn {
-            position: relative;
-            border: 2.5px solid var(--card-border);
-            border-radius: 20px;
-            padding: 20px 12px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 8px;
-            cursor: pointer;
-            transition: border-color .15s, background .15s, transform .1s;
-            background: white;
-            user-select: none;
-        }
-        .opt-btn:active { transform: scale(.97); }
-        .opt-btn.selected { border-color: #3b82f6; background: #eff6ff; }
-        .opt-btn.correct  { border-color: var(--green); background: #f0fdf4; }
-        .opt-btn.wrong    { border-color: #ef4444; background: #fef2f2; }
-
-        /* ── Unit node ───────────────────── */
-        .unit-node {
-            width: 88px; height: 88px;
-            border-radius: 50%;
-            border: none;
-            outline: none;
-            cursor: pointer;
-            display: flex; align-items:center; justify-content:center;
-            font-size: 2rem;
-            box-shadow: 0 8px 0 rgba(0,0,0,.15), 0 2px 16px rgba(0,0,0,.08);
-            transition: transform .15s, box-shadow .15s;
-            position: relative;
-        }
-        .unit-node:not(.locked):active { transform:translateY(6px); box-shadow:0 2px 0 rgba(0,0,0,.15); }
-        .unit-node.locked { cursor: default; opacity: .55; }
-
-        /* ── Bottom nav ─────────────────── */
-        .bottom-nav {
-            position: fixed; bottom: 0;
-            display: flex;
-            background: white;
-            border-top: 2px solid var(--card-border);
-        }
-        .nav-btn {
-            flex: 1;
-            display: flex; flex-direction:column; align-items:center;
-            gap: 4px; padding: 10px 0 12px;
-            font-family: 'Syne', sans-serif;
-            font-size: 10px; font-weight: 800;
-            letter-spacing: .08em; text-transform: uppercase;
-            color: var(--muted); border: none; background: none; cursor: pointer;
-            transition: color .15s;
-        }
-        .nav-btn.active { color: var(--green); }
-        .nav-btn svg { transition: transform .2s; }
-        .nav-btn.active svg { transform: scale(1.15); }
-
-        /* ── Cards ───────────────────────── */
-        .card {
-            background: white;
-            border: 2px solid var(--card-border);
-            border-radius: 24px;
-            padding: 20px;
-        }
-
-        /* ── Teach card ──────────────────── */
-        .teach-card {
-            background: white;
-            border-radius: 32px;
-            padding: 36px 28px;
-            display: flex; flex-direction:column; align-items:center;
-            gap: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,.12);
-        }
-
-        /* ── Buttons ─────────────────────── */
-        .btn {
-            width: 100%;
-            padding: 16px;
-            border-radius: 16px;
-            font-family: 'Syne', sans-serif;
-            font-size: 15px; font-weight: 800;
-            letter-spacing: .06em; text-transform: uppercase;
-            border: none; cursor: pointer;
-            transition: filter .15s, transform .1s;
-        }
-        .btn:active { filter: brightness(.92); transform: scale(.98); }
-        .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
-        .btn-primary { background: var(--green); color: white; }
-        .btn-danger  { background: #ef4444; color: white; }
-        .btn-white   { background: white; color: var(--ink); border: 2px solid var(--card-border); }
-
-        /* ── Scrollbar ───────────────────── */
-        .no-scroll::-webkit-scrollbar { display: none; }
-        .no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* ── Hearts ─────────────────────── */
-        .heart { display:inline-block; font-size:1.1rem; line-height:1; transition: transform .2s; }
-        .heart.lost { opacity: .2; filter: grayscale(1); transform: scale(.85); }
+        *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+        body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:var(--tx);touch-action:manipulation;min-height:100dvh;user-select:none}
+        ::-webkit-scrollbar{width:3px}
+        ::-webkit-scrollbar-thumb{background:var(--bd);border-radius:99px}
+        @keyframes up{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes pop{0%,100%{transform:scale(1)}45%{transform:scale(1.2)}}
+        @keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-8px)}40%,80%{transform:translateX(8px)}}
+        @keyframes ping{0%{transform:scale(1);opacity:1}100%{transform:scale(1.7);opacity:0}}
+        .au{animation:up .35s cubic-bezier(.22,1,.36,1) both}
+        .ap{animation:pop .4s ease}
+        .as{animation:shake .4s ease}
+        .pg{height:6px;background:var(--bd);border-radius:99px;overflow:hidden}
+        .pf{height:100%;border-radius:99px;transition:width .5s cubic-bezier(.22,1,.36,1)}
+        .btn{width:100%;padding:15px;border-radius:13px;border:none;cursor:pointer;font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;font-weight:800;letter-spacing:.05em;text-transform:uppercase;transition:filter .15s,transform .1s,opacity .15s}
+        .btn:active{filter:brightness(.87);transform:scale(.98)}
+        .btn:disabled{opacity:.25;cursor:not-allowed;transform:none}
+        .ba{background:var(--ac);color:#0e0c0a}
+        .br{background:var(--rd);color:#fff}
+        .bt{background:var(--tl);color:#fff}
+        .bg2{background:var(--sf2);color:var(--tx);border:1.5px solid var(--bd)}
+        .heart{font-size:15px;transition:opacity .25s,transform .25s;display:inline-block}
+        .heart.lost{opacity:.13;transform:scale(.7);filter:grayscale(1)}
+        .sinput{width:100%;padding:10px 14px;background:var(--sf2);border:1.5px solid var(--bd);border-radius:11px;color:var(--tx);font-family:'Plus Jakarta Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+        .sinput:focus{border-color:var(--ac)}
+        .sinput::placeholder{color:var(--tx2)}
+        /* Word tiles for sentence builder */
+        .tile{padding:10px 16px;border-radius:10px;border:2px solid var(--bd);background:var(--sf);cursor:pointer;font-family:'Lora',serif;font-size:16px;font-weight:700;color:var(--tx);transition:border-color .15s,background .15s,transform .1s,opacity .15s}
+        .tile:active{transform:scale(.94)}
+        .tile.used{opacity:.25;cursor:default;transform:none}
+        .tile.placed{background:var(--bl2);border-color:var(--bl)}
+        .tile.placed:active{transform:scale(.97)}
+        /* Answer slot area */
+        .slot-area{min-height:56px;border:2px dashed var(--bd);border-radius:12px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;transition:border-color .3s}
+        .slot-area.has-content{border-color:var(--ac);border-style:solid}
+        .slot-area.correct{border-color:var(--gn);background:var(--gn2)}
+        .slot-area.wrong{border-color:var(--rd);background:var(--rd2)}
+        /* MCQ options */
+        .mopt{background:var(--sf);border:2px solid var(--bd);border-radius:13px;padding:14px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s;text-align:left;width:100%}
+        .mopt:active{transform:scale(.98)}
+        .mopt.sel{border-color:var(--bl);background:var(--bl2)}
+        .mopt.cor{border-color:var(--gn);background:var(--gn2)}
+        .mopt.wrg{border-color:var(--rd);background:var(--rd2)}
+        /* Card grid opts */
+        .gopt{background:var(--sf);border:2px solid var(--bd);border-radius:13px;padding:15px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:border-color .15s,background .15s,transform .1s}
+        .gopt:active{transform:scale(.95)}
+        .gopt.sel{border-color:var(--bl);background:var(--bl2)}
+        .gopt.cor{border-color:var(--gn);background:var(--gn2)}
+        .gopt.wrg{border-color:var(--rd);background:var(--rd2)}
+        /* Nav */
+        .bnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:480px;display:flex;background:var(--sf);border-top:1.5px solid var(--bd);z-index:50}
+        .nb{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 14px;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--tx2);border:none;background:none;cursor:pointer;transition:color .2s}
+        .nb.active{color:var(--ac)}
+        .hdr{padding:14px 16px 12px;background:var(--sf);border-bottom:1.5px solid var(--bd);position:sticky;top:0;z-index:20}
+        .card{background:var(--sf);border:1.5px solid var(--bd);border-radius:14px;padding:16px}
+        .ex-row{padding:10px 12px;border-radius:10px;background:var(--sf2);margin-bottom:8px}
+        .lbl{font-size:11px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.09em}
+        .gram-item{background:var(--sf);border:1.5px solid var(--bd);border-radius:13px;overflow:hidden}
+        .gram-hdr{padding:13px 15px;display:flex;align-items:center;justify-content:space-between;cursor:pointer}
+        .gram-body{padding:13px 15px;border-top:1.5px solid var(--bd)}
+        .srs-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase}
     </style>
 </head>
-<body>
-    <div id="root"></div>
+<body><div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo, useReducer } = React;
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef, useCallback } = React;
+/* ═══════════════════════════════════════════════════════
+   WORD DATABASE
+═══════════════════════════════════════════════════════ */
+const WORDS = [
+    {w:"toki",   m:"konuşmak, dil, merhaba",         e:"💬",g:"temel"},
+    {w:"pona",   m:"iyi, güzel, basit",               e:"👍",g:"temel"},
+    {w:"ike",    m:"kötü, gereksiz, karmaşık",        e:"👎",g:"temel"},
+    {w:"mi",     m:"ben, biz, benim",                 e:"🙋",g:"temel"},
+    {w:"sina",   m:"sen, siz, senin",                 e:"👉",g:"temel"},
+    {w:"ona",    m:"o, onlar",                        e:"👀",g:"temel"},
+    {w:"ni",     m:"bu, şu, o (işaret)",              e:"☝️",g:"temel"},
+    {w:"jan",    m:"insan, kişi, biri",               e:"👤",g:"temel"},
+    {w:"mute",   m:"çok, fazla, miktar",              e:"🔢",g:"temel"},
+    {w:"ale",    m:"her şey, hepsi, evren",           e:"🌐",g:"temel"},
+    {w:"li",     m:"(özne-yüklem ayırıcı)",           e:"⟶",g:"partikel"},
+    {w:"e",      m:"(nesne belirteci)",               e:"→", g:"partikel"},
+    {w:"pi",     m:"(sıfat gruplayıcı, -in)",        e:"∘", g:"partikel"},
+    {w:"la",     m:"(bağlam eki, -ise)",              e:"⌀", g:"partikel"},
+    {w:"en",     m:"ve (özne bağlacı)",               e:"＋",g:"partikel"},
+    {w:"o",      m:"ey! (seslenme, emir)",            e:"📣",g:"partikel"},
+    {w:"anu",    m:"veya, ya da",                     e:"❓",g:"partikel"},
+    {w:"taso",   m:"ama, sadece, yalnız",             e:"✋",g:"partikel"},
+    {w:"mama",   m:"anne, baba, ebeveyn",             e:"🤱",g:"insan"},
+    {w:"meli",   m:"kadın, dişi",                     e:"👩",g:"insan"},
+    {w:"mije",   m:"erkek, eril",                     e:"👨",g:"insan"},
+    {w:"luka",   m:"el, kol; beş (sayı)",             e:"✋",g:"insan"},
+    {w:"noka",   m:"ayak, bacak, alt kısım",          e:"🦵",g:"insan"},
+    {w:"uta",    m:"ağız, dudak",                     e:"👄",g:"insan"},
+    {w:"lawa",   m:"baş, kafa, yönetmek",             e:"🧠",g:"insan"},
+    {w:"sijelo", m:"vücut, beden",                    e:"🫀",g:"insan"},
+    {w:"pilin",  m:"hissetmek, kalp, duygu",          e:"💓",g:"insan"},
+    {w:"kute",   m:"kulak, duymak, dinlemek",         e:"👂",g:"insan"},
+    {w:"oko",    m:"göz",                             e:"👁️",g:"insan"},
+    {w:"lukin",  m:"görmek, bakmak, görünüş",         e:"🔍",g:"insan"},
+    {w:"olin",   m:"sevmek (romantik), aşk",          e:"❤️",g:"insan"},
+    {w:"ma",     m:"toprak, ülke, dünya",             e:"🌍",g:"doga"},
+    {w:"kasi",   m:"bitki, ağaç, ot",                 e:"🌳",g:"doga"},
+    {w:"suno",   m:"güneş, ışık, parlaklık",          e:"☀️",g:"doga"},
+    {w:"mun",    m:"ay, yıldız, gece gökyüzü",        e:"🌙",g:"doga"},
+    {w:"kon",    m:"hava, nefes, ruh",                e:"💨",g:"doga"},
+    {w:"telo",   m:"su, sıvı, ıslak",                e:"💧",g:"doga"},
+    {w:"seli",   m:"ateş, sıcak, ısı",               e:"🔥",g:"doga"},
+    {w:"lete",   m:"soğuk, üşümek, çiğ",             e:"🧊",g:"doga"},
+    {w:"kiwen",  m:"sert, katı, taş, metal",          e:"🪨",g:"doga"},
+    {w:"kala",   m:"balık, deniz canlısı",            e:"🐟",g:"doga"},
+    {w:"soweli", m:"kara hayvanı, memeli",            e:"🐾",g:"doga"},
+    {w:"waso",   m:"kuş, uçan hayvan",                e:"🐦",g:"doga"},
+    {w:"pipi",   m:"böcek, küçük hayvan",             e:"🐛",g:"doga"},
+    {w:"akesi",  m:"sürüngen, amfibi",                e:"🦎",g:"doga"},
+    {w:"ijo",    m:"şey, nesne, olay",                e:"📦",g:"nesne"},
+    {w:"ilo",    m:"alet, araç, cihaz",               e:"🔧",g:"nesne"},
+    {w:"tomo",   m:"ev, bina, oda",                   e:"🏠",g:"nesne"},
+    {w:"lipu",   m:"kağıt, kitap, belge",             e:"📄",g:"nesne"},
+    {w:"len",    m:"kıyafet, kumaş, gizli",           e:"👗",g:"nesne"},
+    {w:"poki",   m:"kutu, kap, kase",                 e:"🫙",g:"nesne"},
+    {w:"supa",   m:"yatay yüzey, masa, yatak",        e:"🛏️",g:"nesne"},
+    {w:"lupa",   m:"delik, kapı, pencere",            e:"🚪",g:"nesne"},
+    {w:"pan",    m:"tahıl, ekmek, makarna",           e:"🍞",g:"nesne"},
+    {w:"kili",   m:"meyve, sebze",                    e:"🍎",g:"nesne"},
+    {w:"moku",   m:"yemek, içmek, yiyecek",           e:"🍽️",g:"nesne"},
+    {w:"mani",   m:"para, servet",                    e:"💰",g:"nesne"},
+    {w:"esun",   m:"pazar, dükkan, çarşı",            e:"🛒",g:"nesne"},
+    {w:"pali",   m:"yapmak, çalışmak, aktivite",      e:"🔨",g:"eylem"},
+    {w:"lape",   m:"uyku, uyumak, dinlenmek",         e:"😴",g:"eylem"},
+    {w:"kama",   m:"gelmek, olmak, başına gelmek",    e:"🚶",g:"eylem"},
+    {w:"tawa",   m:"gitmek, -e doğru, için",          e:"➡️",g:"eylem"},
+    {w:"jo",     m:"sahip olmak, tutmak, taşımak",    e:"🎒",g:"eylem"},
+    {w:"pana",   m:"vermek, göndermek, yaymak",       e:"🎁",g:"eylem"},
+    {w:"sona",   m:"bilmek, anlamak, bilgi",          e:"📚",g:"eylem"},
+    {w:"wile",   m:"istemek, ihtiyaç, arzu",          e:"💫",g:"eylem"},
+    {w:"ken",    m:"-ebilmek, olasılık, yetenek",     e:"✅",g:"eylem"},
+    {w:"open",   m:"açmak, başlamak",                 e:"🔓",g:"eylem"},
+    {w:"pini",   m:"son, bitmek, geçmiş",             e:"🏁",g:"eylem"},
+    {w:"kepeken",m:"kullanmak, ile, vasıtasıyla",     e:"🔗",g:"eylem"},
+    {w:"awen",   m:"beklemek, kalmak, korumak",       e:"⏸️",g:"eylem"},
+    {w:"moli",   m:"ölüm, ölmek, öldürmek",          e:"💀",g:"eylem"},
+    {w:"utala",  m:"savaş, dövüş, mücadele",          e:"⚔️",g:"eylem"},
+    {w:"pakala", m:"hata, kaza, bozulmak",            e:"💥",g:"eylem"},
+    {w:"sitelen",m:"resim, yazı, çizmek",             e:"🖼️",g:"eylem"},
+    {w:"suli",   m:"büyük, uzun, önemli",             e:"🐘",g:"sifat"},
+    {w:"lili",   m:"küçük, az, genç",                 e:"🐜",g:"sifat"},
+    {w:"wawa",   m:"güçlü, enerji, yoğun",            e:"⚡",g:"sifat"},
+    {w:"walo",   m:"beyaz, açık renk, soluk",         e:"⬜",g:"sifat"},
+    {w:"pimeja", m:"siyah, karanlık, gölge",          e:"⬛",g:"sifat"},
+    {w:"loje",   m:"kırmızı",                         e:"🔴",g:"sifat"},
+    {w:"laso",   m:"mavi, yeşil",                     e:"🔵",g:"sifat"},
+    {w:"jelo",   m:"sarı",                            e:"🟡",g:"sifat"},
+    {w:"kule",   m:"renk, boyamak, renkli",           e:"🎨",g:"sifat"},
+    {w:"nasa",   m:"tuhaf, deli, sarhoş",             e:"🤪",g:"sifat"},
+    {w:"sama",   m:"aynı, benzer, gibi",              e:"🟰",g:"sifat"},
+    {w:"ante",   m:"farklı, başka, değişmek",         e:"🔀",g:"sifat"},
+    {w:"sin",    m:"yeni, taze, başka, fazladan",     e:"🆕",g:"sifat"},
+    {w:"suwi",   m:"tatlı, sevimli, şekerli",         e:"🍬",g:"sifat"},
+    {w:"jaki",   m:"kirli, iğrenç, pis",              e:"🤢",g:"sifat"},
+    {w:"musi",   m:"eğlence, oyun, sanat",            e:"🎮",g:"sifat"},
+    {w:"weka",   m:"uzak, yok, atmak",                e:"🚫",g:"sifat"},
+    {w:"tenpo",  m:"zaman, süre, an, dönem",          e:"⏰",g:"zaman"},
+    {w:"lon",    m:"-de/da, bulunmak, gerçek",        e:"📍",g:"zaman"},
+    {w:"tan",    m:"-den, sebep, çünkü",              e:"🔀",g:"zaman"},
+    {w:"nanpa",  m:"sayı, numara, -inci",             e:"🔢",g:"zaman"},
+    {w:"wan",    m:"bir, birlik, birleştirmek",       e:"1️⃣",g:"zaman"},
+    {w:"tu",     m:"iki, ayırmak, bölmek",            e:"2️⃣",g:"zaman"},
+    {w:"nimi",   m:"isim, kelime, ad",                e:"🏷️",g:"diger"},
+    {w:"seme",   m:"ne? hangi? kim?",                 e:"❓",g:"diger"},
+    {w:"a",      m:"ah! ooo! (ünlem, vurgu)",         e:"😲",g:"diger"},
+    {w:"mu",     m:"hayvan sesi (miyav, hav, möö)",   e:"🐱",g:"diger"},
+    {w:"kulupu", m:"grup, topluluk, millet",          e:"👥",g:"diger"},
+    {w:"nasin",  m:"yol, yöntem, doktrin",            e:"🛣️",g:"diger"},
+    {w:"monsuta",m:"korku, canavar, korkunç",         e:"👹",g:"diger"},
+    {w:"misikeke",m:"ilaç, tedavi, iyileştirmek",    e:"💊",g:"diger"},
+    {w:"epiku",  m:"epik, havalı, muhteşem",          e:"🌟",g:"diger"},
+];
+const W = {}; WORDS.forEach(w=>W[w.w]=w);
 
-        // ─────────────────────────────────────────────────────────
-        //  DATA
-        // ─────────────────────────────────────────────────────────
-        const WORD_DATA = [
-            { id: 'basics', title: "Basics", bg: "#22c55e", shadow: "#15803d", words: [
-                { w: "toki",  m: "hello, language, speech",     e: "💬" },
-                { w: "pona",  m: "good, simple, friendly",      e: "👍" },
-                { w: "ike",   m: "bad, evil, complicated",      e: "👎" },
-                { w: "mi",    m: "I, me, my",                   e: "🙋" },
-                { w: "sina",  m: "you, your",                   e: "👉" },
-            ]},
-            { id: 'objects', title: "Objects", bg: "#3b82f6", shadow: "#1d4ed8", words: [
-                { w: "ijo",   m: "thing, object",               e: "📦" },
-                { w: "jo",    m: "to have, carry",              e: "🎒" },
-                { w: "moku",  m: "eat, drink, food",            e: "🍎" },
-                { w: "telo",  m: "water, liquid",               e: "💧" },
-                { w: "kiwen", m: "hard thing, rock, metal",     e: "🪨" },
-            ]},
-            { id: 'people', title: "People", bg: "#a855f7", shadow: "#7e22ce", words: [
-                { w: "jan",   m: "person, human",               e: "👤" },
-                { w: "mama",  m: "parent, creator",             e: "🤱" },
-                { w: "meli",  m: "woman, female",               e: "👩" },
-                { w: "mije",  m: "man, male",                   e: "👨" },
-                { w: "ona",   m: "he, she, it, they",           e: "👀" },
-            ]},
-            { id: 'nature', title: "Nature", bg: "#10b981", shadow: "#065f46", words: [
-                { w: "ma",    m: "land, earth, country",        e: "🌍" },
-                { w: "kasi",  m: "plant, tree, leaf",           e: "🌳" },
-                { w: "suno",  m: "sun, light",                  e: "☀️"  },
-                { w: "mun",   m: "moon, star, night sky",       e: "🌙" },
-                { w: "kon",   m: "air, wind, spirit",           e: "💨" },
-            ]},
-            { id: 'verbs', title: "Actions", bg: "#f97316", shadow: "#c2410c", words: [
-                { w: "lape",  m: "sleep, rest",                 e: "😴" },
-                { w: "lukin", m: "see, look, vision",           e: "👁️"  },
-                { w: "pali",  m: "do, work, make",              e: "🔨" },
-                { w: "sona",  m: "know, understand",            e: "🧠" },
-                { w: "kama",  m: "come, become",                e: "🚶" },
-            ]},
-            { id: 'desc', title: "Descriptors", bg: "#eab308", shadow: "#854d0e", words: [
-                { w: "suli",  m: "big, tall, important",        e: "🐘" },
-                { w: "lili",  m: "small, little, young",        e: "🐜" },
-                { w: "loje",  m: "red",                         e: "🔴" },
-                { w: "laso",  m: "blue, green",                 e: "🔵" },
-                { w: "jelo",  m: "yellow",                      e: "🟡" },
-            ]},
-        ];
+/* ═══════════════════════════════════════════════════════
+   SENTENCE EXERCISES  (cümle kurma alıştırmaları)
+   type: 'build'  → kelime bankasından sıralama
+   type: 'fill'   → boşluk doldurma (MCQ)
+   type: 'tr2tp'  → Türkçeyi Toki Pona'ya çevir (MCQ cümle)
+   All use grammar implicitly — no "li nedir?" questions
+═══════════════════════════════════════════════════════ */
+const SENTENCES = [
+    // ── li (özne-yüklem) ──
+    {id:"s1",  type:"build", answer:["mi","moku"],           tr:"Ben yerim.",           hint:"mi = ben, özne 'mi' ise 'li' gelmez"},
+    {id:"s2",  type:"build", answer:["sina","lape"],          tr:"Sen uyursun.",         hint:"sina = sen, 'li' yok"},
+    {id:"s3",  type:"build", answer:["ona","li","moku"],      tr:"O yer.",               hint:"ona ≠ mi/sina → li lazım"},
+    {id:"s4",  type:"build", answer:["jan","li","pona"],      tr:"İnsan iyidir.",        hint:""},
+    {id:"s5",  type:"build", answer:["tomo","li","suli"],     tr:"Ev büyüktür.",         hint:""},
+    {id:"s6",  type:"fill",  answer:"li",  sentence:["jan","___","toki"], tr:"İnsan konuşuyor.", opts:["li","e","pi","la"]},
+    {id:"s7",  type:"fill",  answer:"li",  sentence:["ona","___","lape"], tr:"O uyuyor.", opts:["li","e","o","en"]},
+    // ── e (nesne) ──
+    {id:"s8",  type:"build", answer:["mi","moku","e","kili"], tr:"Ben meyve yerim.",     hint:"e = nesne işaretçisi"},
+    {id:"s9",  type:"build", answer:["sina","lukin","e","mi"],tr:"Sen beni görüyorsun.", hint:""},
+    {id:"s10", type:"build", answer:["jan","li","pali","e","tomo"], tr:"İnsan ev yapar.",hint:""},
+    {id:"s11", type:"fill",  answer:"e",   sentence:["mi","moku","___","telo"], tr:"Ben su içiyorum.", opts:["e","li","pi","la"]},
+    {id:"s12", type:"fill",  answer:"e",   sentence:["ona","li","lukin","___","sina"], tr:"O seni görüyor.", opts:["e","li","o","en"]},
+    // ── Sıfat sırası ──
+    {id:"s13", type:"build", answer:["jan","pona"],           tr:"İyi insan",            hint:"sıfat ismin ARKASINA gelir"},
+    {id:"s14", type:"build", answer:["telo","lete"],          tr:"Soğuk su",             hint:"Türkçe: 'soğuk su' → Toki Pona: 'su soğuk'"},
+    {id:"s15", type:"build", answer:["tomo","suli"],          tr:"Büyük ev",             hint:""},
+    {id:"s16", type:"fill",  answer:"nasa", sentence:["telo","___"], tr:"'Alkol' anlamında (tuhaf su)", opts:["nasa","pona","suli","ike"]},
+    {id:"s17", type:"fill",  answer:"tawa", sentence:["tomo","___"], tr:"Araba (hareket eden yapı)", opts:["tawa","lape","pona","ike"]},
+    // ── pi ──
+    {id:"s18", type:"build", answer:["tomo","pi","telo","nasa"], tr:"Bar / meyhane",     hint:"pi = sıfat grubu başlar; telo nasa = alkol"},
+    {id:"s19", type:"build", answer:["jan","pi","sona","mute"], tr:"Uzman / bilge kişi", hint:"sona mute = çok bilgi"},
+    {id:"s20", type:"fill",  answer:"pi",  sentence:["tomo","___","telo","nasa"], tr:"Bar / meyhane (alkol evi)", opts:["pi","li","e","la"]},
+    // ── la (bağlam) ──
+    {id:"s21", type:"build", answer:["tenpo","ni","la","mi","lape"], tr:"Şimdi uyuyorum.",hint:"la'dan önce bağlam, sonra cümle"},
+    {id:"s22", type:"fill",  answer:"la",  sentence:["sina","moku","___","sina","suli"], tr:"Yersen büyürsün.", opts:["la","li","e","pi"]},
+    // ── lon, tawa, kepeken, tan ──
+    {id:"s23", type:"build", answer:["mi","lon","tomo"],      tr:"Evdeyim.",             hint:"lon = -de/da, konumda"},
+    {id:"s24", type:"build", answer:["mi","kama","tawa","sina"], tr:"Sana geliyorum.",   hint:"tawa = -e doğru"},
+    {id:"s25", type:"fill",  answer:"lon", sentence:["ona","li","lon","tomo"], tr:"O evde.", opts:["lon","tawa","kepeken","tan"]},
+    // ── en, çoklu li, çoklu e ──
+    {id:"s26", type:"build", answer:["mi","en","sina","li","moku"], tr:"Ben ve sen yiyoruz.", hint:"en = özne bağlar"},
+    {id:"s27", type:"build", answer:["ona","li","lape","li","toki"], tr:"O uyuyor ve konuşuyor.", hint:"li tekrar = 've' fiil için"},
+    {id:"s28", type:"build", answer:["mi","moku","e","kili","e","pan"], tr:"Meyve ve ekmek yiyorum.", hint:"e tekrar = 've' nesne için"},
+    // ── o (emir) ──
+    {id:"s29", type:"build", answer:["o","toki"],             tr:"Konuş! (emir)",        hint:"o + fiil = emir"},
+    {id:"s30", type:"build", answer:["o","tawa","tomo"],      tr:"Eve git!",             hint:""},
+    {id:"s31", type:"fill",  answer:"o",  sentence:["___","lukin"], tr:"Bak! (emir)", opts:["o","li","e","la"]},
+    // ── seme (soru) ──
+    {id:"s32", type:"build", answer:["ni","li","seme"],       tr:"Bu nedir?",            hint:"seme = ne/hangi"},
+    {id:"s33", type:"build", answer:["sina","tawa","seme"],   tr:"Nereye gidiyorsun?",   hint:""},
+    {id:"s34", type:"fill",  answer:"seme", sentence:["sina","jo","e","___"], tr:"Ne var sende?", opts:["seme","ni","li","pi"]},
+    // ── Fiil+ala+Fiil soru ──
+    {id:"s35", type:"build", answer:["sina","moku","ala","moku"], tr:"Yiyor musun?",     hint:"fiil + ala + fiil = mı/mi?"},
+    {id:"s36", type:"fill",  answer:"ala", sentence:["ona","li","pona","___","pona"], tr:"O iyi mi?", opts:["ala","en","pi","la"]},
+];
 
-        const TOTAL_WORDS = WORD_DATA.reduce((a, u) => a + u.words.length, 0);
+/* ═══════════════════════════════════════════════════════
+   LESSON UNITS
+═══════════════════════════════════════════════════════ */
+const UNITS = [
+    {id:"u1",title:"Temel Kelimeler",  sub:"İlk adım",               emoji:"🌱",color:"#e09050",
+     wk:["toki","pona","ike","mi","sina","ona","ni","jan","mute"],
+     sx:["s1","s2","s3","s4","s5","s6","s7","s13"]},
+    {id:"u2",title:"Nesneler & Eylemler",sub:"Ne yapıyorsun?",       emoji:"🔨",color:"#c8a83a",
+     wk:["moku","telo","kili","pan","tomo","ilo","pali","lape","kama","tawa","jo","pana"],
+     sx:["s8","s9","s10","s11","s12","s14","s15","s23","s24","s25"]},
+    {id:"u3",title:"Sıfatlar & Renkler",sub:"Dünyayı tanımla",       emoji:"🎨",color:"#c85050",
+     wk:["suli","lili","wawa","walo","pimeja","loje","laso","jelo","kule","nasa","sama","ante","sin","suwi","jaki"],
+     sx:["s16","s17"]},
+    {id:"u4",title:"Partiküller",       sub:"Gramerin kalbi",         emoji:"⚙️",color:"#38a89a",
+     wk:["li","e","pi","la","en","o","anu","taso"],
+     sx:["s18","s19","s20","s21","s22","s26","s27","s28","s29","s30","s31","s32","s33","s34","s35","s36"]},
+    {id:"u5",title:"İnsan & Beden",     sub:"Kendini tanı",           emoji:"👤",color:"#a855a8",
+     wk:["mama","meli","mije","luka","noka","uta","lawa","sijelo","pilin","kute","oko","lukin","olin"],
+     sx:[]},
+    {id:"u6",title:"Doğa & Hayvanlar", sub:"Çevreni keşfet",         emoji:"🌿",color:"#4a9860",
+     wk:["ma","kasi","suno","mun","kon","telo","seli","lete","kiwen","kala","soweli","waso","pipi","akesi"],
+     sx:[]},
+    {id:"u7",title:"İleri & Çeşitli",  sub:"Son rötuşlar",           emoji:"🏆",color:"#7a8ac8",
+     wk:["sona","wile","ken","open","pini","kepeken","awen","moli","utala","pakala","sitelen","tenpo","lon","tan","nanpa","wan","tu","nimi","seme","a","kulupu","nasin","monsuta","misikeke","epiku"],
+     sx:[]},
+];
 
-        // ─────────────────────────────────────────────────────────
-        //  HELPERS
-        // ─────────────────────────────────────────────────────────
-        const shuffle = arr => [...arr].sort(() => Math.random() - .5);
+/* ═══════════════════════════════════════════════════════
+   SRS — Spaced Repetition System
+   Her kelime için: {interval, ease, nextReview, errors}
+   SM-2 benzeri basit versiyon
+═══════════════════════════════════════════════════════ */
+const SRS_INTERVALS = [1, 3, 7, 14, 30, 60]; // days
+function srsUpdate(card, correct) {
+    const now = Date.now();
+    if (!correct) {
+        return { ...card, interval: 0, errors: (card.errors||0)+1, nextReview: now + 60*1000 }; // retry in 1 min
+    }
+    const idx = Math.min((card.interval||0) + 1, SRS_INTERVALS.length - 1);
+    return { ...card, interval: idx, errors: card.errors||0,
+        nextReview: now + SRS_INTERVALS[idx] * 24*60*60*1000 };
+}
+function isDue(card) {
+    return !card.nextReview || Date.now() >= card.nextReview;
+}
+function daysUntil(ts) {
+    if (!ts) return 0;
+    const ms = ts - Date.now();
+    if (ms <= 0) return 0;
+    return Math.ceil(ms / (24*60*60*1000));
+}
 
-        function buildLessonQueue(unit, learnedWords) {
-            const queue = [];
-            // Teach new words first
-            unit.words.forEach(word => {
-                if (!learnedWords.includes(word.w)) {
-                    queue.push({ type: 'learn', word });
-                }
-            });
-            // Quiz every word with 3 distractors
-            unit.words.forEach(word => {
-                const distractors = shuffle(unit.words.filter(w => w.w !== word.w)).slice(0, 3);
-                queue.push({
-                    type: 'vocab',
-                    prompt: `Which word means:`,
-                    meaning: word.m,
-                    emoji: word.e,
-                    correct: word.w,
-                    options: shuffle([word, ...distractors]),
-                });
-            });
-            return queue;
-        }
+/* ═══════════════════════════════════════════════════════
+   HELPERS
+═══════════════════════════════════════════════════════ */
+const shuffle = a => [...a].sort(()=>Math.random()-.5);
+const wFind = key => WORDS.find(w=>w.w===key);
 
-        // ─────────────────────────────────────────────────────────
-        //  SMALL COMPONENTS
-        // ─────────────────────────────────────────────────────────
+function buildSessionQueue(unit, srsCards, allLearned) {
+    // srsCards: {wordKey: {interval, nextReview, errors}}
+    const queue = [];
+    const unitWords = unit.wk.map(wFind).filter(Boolean);
 
-        function Hearts({ total = 5, remaining }) {
-            return (
-                <div style={{ display:'flex', gap:4 }}>
-                    {Array.from({ length: total }).map((_, i) => (
-                        <span key={i} className={`heart ${i >= remaining ? 'lost' : ''}`}>❤️</span>
+    // 1. New words (not yet learned, up to 5 per session)
+    const newWords = unitWords.filter(w => !allLearned.includes(w.w)).slice(0, 5);
+
+    // 2. Due reviews from this unit
+    const due = unitWords
+        .filter(w => allLearned.includes(w.w) && srsCards[w.w] && isDue(srsCards[w.w]))
+        .slice(0, 8);
+
+    // 3. Error words (highest error count first)
+    const errWords = unitWords
+        .filter(w => allLearned.includes(w.w) && (srsCards[w.w]?.errors||0) > 0)
+        .sort((a,b)=>(srsCards[b.w]?.errors||0)-(srsCards[a.w]?.errors||0))
+        .slice(0, 3);
+
+    // Build: for each new word → teach → quiz immediately → sentence (if available)
+    newWords.forEach(word => {
+        queue.push({ type:'teach', word });
+        // quiz: pick TP from Turkish (no translations on options)
+        const d = shuffle(WORDS.filter(w=>w.w!==word.w)).slice(0,3);
+        queue.push({ type:'pick_tp', word, prompt:word.m, correct:word.w, options:shuffle([word,...d]) });
+        // quiz: pick Turkish from TP
+        const d2 = shuffle(WORDS.filter(w=>w.w!==word.w)).slice(0,3);
+        queue.push({ type:'pick_tr', word, prompt:word.w, correct:word.m,
+            options:shuffle([{k:word.w,l:word.m},...d2.map(x=>({k:x.w,l:x.m}))]) });
+    });
+
+    // Sentence exercises for this unit
+    const sentenceIds = unit.sx || [];
+    const sentences = shuffle(sentenceIds.map(id=>SENTENCES.find(s=>s.id===id)).filter(Boolean)).slice(0,4);
+    sentences.forEach(s => queue.push({ type:'sentence', sentence:s }));
+
+    // Reviews and error words → quiz only
+    shuffle([...new Set([...due, ...errWords])]).forEach(word => {
+        const d = shuffle(WORDS.filter(w=>w.w!==word.w)).slice(0,3);
+        queue.push({ type:'pick_tp', word, prompt:word.m, correct:word.w, options:shuffle([word,...d]), isReview:true });
+    });
+
+    // Final mixed sentence round if new words exist
+    if (newWords.length > 0 && sentences.length > 0) {
+        const extra = shuffle(sentences).slice(0,2);
+        extra.forEach(s => queue.push({ type:'sentence', sentence:s, isRepeat:true }));
+    }
+
+    return queue;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STORAGE
+═══════════════════════════════════════════════════════ */
+function loadState() {
+    try {
+        const s = JSON.parse(localStorage.getItem('tp_state2')||'{}');
+        return {
+            learned: s.learned || [],
+            srs: s.srs || {},
+            completedUnits: s.completedUnits || [],
+            streak: s.streak || 0,
+            lastStudied: s.lastStudied || null,
+        };
+    } catch { return { learned:[], srs:{}, completedUnits:[], streak:0, lastStudied:null }; }
+}
+function saveState(s) {
+    try { localStorage.setItem('tp_state2', JSON.stringify(s)); } catch {}
+}
+
+/* ═══════════════════════════════════════════════════════
+   UI PRIMITIVES
+═══════════════════════════════════════════════════════ */
+function Hearts({ total=5, remaining }) {
+    return <div style={{display:'flex',gap:3}}>{Array.from({length:total}).map((_,i)=><span key={i} className={`heart ${i>=remaining?'lost':''}`}>❤️</span>)}</div>;
+}
+
+function BottomNav({ active, setView, dueCount }) {
+    return (
+        <nav className="bnav">
+            {[
+                {id:'map',    label:'Öğren',   icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg>},
+                {id:'review', label:'Tekrar',  icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>},
+                {id:'dict',   label:'Sözlük',  icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>},
+            ].map(t => (
+                <button key={t.id} className={`nb ${active===t.id?'active':''}`} onClick={()=>setView(t.id)} style={{position:'relative'}}>
+                    {t.icon}{t.label}
+                    {t.id==='review' && dueCount>0 && (
+                        <span style={{position:'absolute',top:8,right:'22%',width:16,height:16,background:active==='review'?'var(--rd)':'var(--ac)',borderRadius:99,fontSize:9,fontWeight:800,color:'#0e0c0a',display:'flex',alignItems:'center',justifyContent:'center'}}>
+                            {dueCount>9?'9+':dueCount}
+                        </span>
+                    )}
+                </button>
+            ))}
+        </nav>
+    );
+}
+
+function LessonHeader({ idx, total, hearts, onQuit, color }) {
+    return (
+        <div style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:12,background:'var(--sf)',borderBottom:'1.5px solid var(--bd)'}}>
+            <button onClick={onQuit} style={{background:'none',border:'none',color:'var(--tx2)',cursor:'pointer',fontSize:17,padding:'4px 6px',borderRadius:8}}>✕</button>
+            <div className="pg" style={{flex:1}}>
+                <div className="pf" style={{width:total?`${((idx+1)/total)*100}%`:'0%',background:color||'var(--ac)'}} />
+            </div>
+            <Hearts total={5} remaining={hearts} />
+        </div>
+    );
+}
+
+function FeedbackBar({ status, correctLabel, hearts, onAction, actionLabel }) {
+    return (
+        <div style={{padding:'14px 16px 26px',borderTop:`2px solid ${status==='correct'?'rgba(74,152,96,.3)':status==='wrong'?'rgba(192,72,72,.3)':'var(--bd)'}`,background:status==='correct'?'rgba(74,152,96,.07)':status==='wrong'?'rgba(192,72,72,.07)':'var(--sf)',transition:'background .2s'}}>
+            {status!=='idle' && (
+                <div className="au" style={{display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
+                    <div style={{width:34,height:34,borderRadius:99,background:status==='correct'?'var(--gn)':'var(--rd)',display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:15,flexShrink:0}}>
+                        {status==='correct'?'✓':'✕'}
+                    </div>
+                    <div>
+                        <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:15,color:status==='correct'?'var(--gn)':'var(--rd)'}}>{status==='correct'?'Harika! 🎉':'Yanlış cevap'}</div>
+                        {status==='wrong'&&correctLabel&&<div style={{fontSize:12,color:'var(--tx2)',marginTop:2}}>Doğru: <strong style={{color:'var(--ac)'}}>{correctLabel}</strong></div>}
+                    </div>
+                </div>
+            )}
+            <button className={`btn ${status==='wrong'?'br':'ba'}`} onClick={onAction}>
+                {actionLabel||( status==='idle'?'Kontrol Et': hearts<=0?'Dersi Bitir':'Devam Et →')}
+            </button>
+        </div>
+    );
+}
+
+/* ═══════════════════════════════════════════════════════
+   EXERCISE SCREENS
+═══════════════════════════════════════════════════════ */
+
+// 1. TEACH CARD
+function TeachCard({ word, onNext }) {
+    return (
+        <div style={{minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:28}}>
+            <div className="lbl" style={{color:'var(--ac)',marginBottom:18,letterSpacing:'.18em'}}>✦ YENİ KELİME ✦</div>
+            <div className="au" style={{width:'100%',maxWidth:340}}>
+                <div style={{background:'var(--sf)',border:'1.5px solid var(--bd)',borderRadius:22,padding:'34px 26px',display:'flex',flexDirection:'column',alignItems:'center',gap:14,boxShadow:'0 20px 60px rgba(0,0,0,.55)'}}>
+                    <div style={{fontSize:72,lineHeight:1,animation:'pop .45s ease'}}>{word.e}</div>
+                    <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:46,letterSpacing:'-0.03em',color:'var(--ac)',marginTop:4}}>{word.w}</div>
+                    <div style={{height:1.5,width:'100%',background:'var(--bd)',borderRadius:99,margin:'2px 0'}} />
+                    <div style={{color:'var(--tx)',fontSize:16,fontWeight:500,textAlign:'center',lineHeight:1.65}}>{word.m}</div>
+                    {word.g==='partikel'&&<div style={{background:'var(--tl2)',border:'1px solid var(--tl)',borderRadius:8,padding:'6px 12px',fontSize:12,color:'var(--tl)',fontWeight:600,textAlign:'center',lineHeight:1.5}}>Bu bir <strong>partikül</strong> — anlam bağlamda ortaya çıkar, cümlelerde görürsün!</div>}
+                </div>
+            </div>
+            <div style={{marginTop:22,width:'100%',maxWidth:340}}>
+                <button className="btn ba" onClick={onNext}>Anladım →</button>
+            </div>
+        </div>
+    );
+}
+
+// 2. PICK TP WORD (Turkish meaning → choose Toki Pona word, no translations on options)
+function PickTpCard({ card, idx, total, hearts, color, status, onCheck, onNext }) {
+    const [sel, setSel] = useState(null);
+    useEffect(()=>setSel(null), [card]);
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
+            <LessonHeader idx={idx} total={total} hearts={hearts} onQuit={()=>onNext('quit')} color={color} />
+            <div style={{flex:1,padding:'22px 16px 0',overflowY:'auto'}}>
+                <div className="lbl" style={{marginBottom:10}}>Bu anlamın Toki Pona kelimesi hangisi?</div>
+                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:23,color:'var(--tx)',marginBottom:6,lineHeight:1.35}}>{card.prompt}</div>
+                <div style={{fontSize:36,marginBottom:20}}>{card.word.e}</div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    {card.options.map(opt=>{
+                        let cls = sel===opt.w&&status==='idle'?'sel':'';
+                        if(status!=='idle'){ if(opt.w===card.correct) cls='cor'; else if(sel===opt.w) cls='wrg'; }
+                        return (
+                            <button key={opt.w} className={`gopt ${cls}`} onClick={()=>status==='idle'&&setSel(opt.w)}>
+                                <span style={{fontSize:32,lineHeight:1}}>{opt.e}</span>
+                                <span style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:18,color:'var(--tx)'}}>{opt.w}</span>
+                                {/* NO TRANSLATION — must recall from memory */}
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+            <FeedbackBar status={status} correctLabel={card.correct} hearts={hearts}
+                onAction={()=>{ if(status==='idle'){if(sel===null)return; onCheck(sel===card.correct);} else onNext(status); }} />
+        </div>
+    );
+}
+
+// 3. PICK TURKISH MEANING (TP word → choose Turkish meaning)
+function PickTrCard({ card, idx, total, hearts, color, status, onCheck, onNext }) {
+    const [sel, setSel] = useState(null);
+    useEffect(()=>setSel(null), [card]);
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
+            <LessonHeader idx={idx} total={total} hearts={hearts} onQuit={()=>onNext('quit')} color={color} />
+            <div style={{flex:1,padding:'22px 16px 0',overflowY:'auto'}}>
+                <div className="lbl" style={{marginBottom:10}}>Bu kelimenin anlamı nedir?</div>
+                <div style={{fontSize:44,marginBottom:4}}>{card.word.e}</div>
+                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:40,color:'var(--ac)',marginBottom:20}}>{card.prompt}</div>
+                <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {card.options.map(opt=>{
+                        let cls = sel===opt.k&&status==='idle'?'sel':'';
+                        if(status!=='idle'){ if(opt.l===card.correct) cls='cor'; else if(sel===opt.k) cls='wrg'; }
+                        return (
+                            <button key={opt.k} className={`mopt ${cls}`} onClick={()=>status==='idle'&&setSel(opt.k)}>
+                                <span style={{fontSize:13,fontWeight:500,color:'var(--tx)',flex:1,lineHeight:1.5}}>{opt.l}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+            <FeedbackBar status={status} correctLabel={card.correct} hearts={hearts}
+                onAction={()=>{ if(status==='idle'){if(sel===null)return; onCheck(card.options.find(o=>o.k===sel)?.l===card.correct);} else onNext(status); }} />
+        </div>
+    );
+}
+
+// 4. FILL IN THE BLANK
+function FillCard({ card, idx, total, hearts, color, status, onCheck, onNext }) {
+    const [sel, setSel] = useState(null);
+    useEffect(()=>setSel(null), [card]);
+    const s = card.sentence;
+    const correctLabel = card.answer;
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
+            <LessonHeader idx={idx} total={total} hearts={hearts} onQuit={()=>onNext('quit')} color={color} />
+            <div style={{flex:1,padding:'22px 16px 0',overflowY:'auto'}}>
+                <div className="lbl" style={{marginBottom:12}}>Boşluğu doldur</div>
+                <div style={{marginBottom:6,fontSize:13,color:'var(--tx2)'}}>{card.tr}</div>
+                {/* Sentence display with blank */}
+                <div style={{display:'flex',flexWrap:'wrap',gap:6,alignItems:'center',marginBottom:24,padding:'14px 16px',background:'var(--sf)',border:'1.5px solid var(--bd)',borderRadius:13}}>
+                    {s.map((tok,i)=>(
+                        tok==='___'
+                        ? <span key={i} style={{display:'inline-block',minWidth:52,borderBottom:`2.5px solid ${status==='idle'?(sel?'var(--ac)':'var(--tx2)'):status==='correct'?'var(--gn)':'var(--rd)'}`,textAlign:'center',fontFamily:"'Lora',serif",fontWeight:700,fontSize:18,color:status!=='idle'?( status==='correct'?'var(--gn)':'var(--rd)'):'var(--ac)',paddingBottom:2,transition:'all .2s'}}>
+                            {status!=='idle' ? correctLabel : (sel||'___')}
+                          </span>
+                        : <span key={i} style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:18,color:'var(--tx)'}}>{tok}</span>
                     ))}
                 </div>
-            );
-        }
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10}}>
+                    {card.opts.map(opt=>{
+                        let cls = sel===opt&&status==='idle'?'sel':'';
+                        if(status!=='idle'){ if(opt===card.answer) cls='cor'; else if(sel===opt) cls='wrg'; }
+                        return (
+                            <button key={opt} className={`gopt ${cls}`} style={{padding:'16px 12px'}} onClick={()=>status==='idle'&&setSel(opt)}>
+                                <span style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:22,color:'var(--tx)'}}>{opt}</span>
+                                <span style={{fontSize:12,color:'var(--tx2)',marginTop:2}}>{wFind(opt)?.m?.split(',')[0]||''}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+                {card.hint&&<div style={{marginTop:14,fontSize:12,color:'var(--tx2)',fontStyle:'italic',padding:'8px 12px',background:'var(--sf2)',borderRadius:8}}>💡 {card.hint||''}</div>}
+            </div>
+            <FeedbackBar status={status} correctLabel={correctLabel} hearts={hearts}
+                onAction={()=>{ if(status==='idle'){if(sel===null)return; onCheck(sel===card.answer);} else onNext(status); }} />
+        </div>
+    );
+}
 
-        function BottomNav({ active, setView }) {
-            return (
-                <nav className="bottom-nav" style={{ width:'100%', maxWidth:480, left:'50%', transform:'translateX(-50%)' }}>
-                    <button className={`nav-btn ${active === 'map' ? 'active' : ''}`} onClick={() => setView('map')}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
-                            <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
-                        </svg>
-                        Learn
-                    </button>
-                    <button className={`nav-btn ${active === 'dict' ? 'active' : ''}`} onClick={() => setView('dict')}>
-                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-                        </svg>
-                        Dictionary
-                    </button>
-                </nav>
-            );
-        }
+// 5. SENTENCE BUILDER (word bank tiles)
+function BuildCard({ card, idx, total, hearts, color, status, onCheck, onNext }) {
+    const sentence = card.sentence;
+    const answer = sentence.answer;
+    const [placed, setPlaced] = useState([]); // words placed by user
+    const [bank, setBank] = useState([]); // available tiles with ids
+    const slotRef = useRef(null);
 
-        // ─────────────────────────────────────────────────────────
-        //  VIEWS
-        // ─────────────────────────────────────────────────────────
+    useEffect(()=>{
+        // Create shuffled bank: correct answer words + 2-3 distractors
+        const distract = shuffle(WORDS.filter(w=>!answer.includes(w.w))).slice(0,Math.min(3, answer.length+1)).map(w=>w.w);
+        const allTiles = shuffle([...answer, ...distract]).map((w,i)=>({id:i,word:w}));
+        setBank(allTiles);
+        setPlaced([]);
+    }, [card]);
 
-        function MapView({ learnedWords, startLesson }) {
-            const [streaks] = useState(1); // placeholder streak
+    const placeTile = (tile) => {
+        if(status!=='idle') return;
+        setPlaced(p=>[...p, tile]);
+        setBank(b=>b.map(t=>t.id===tile.id?{...t,used:true}:t));
+    };
+    const removePlaced = (tile) => {
+        if(status!=='idle') return;
+        setPlaced(p=>p.filter(t=>t.id!==tile.id));
+        setBank(b=>b.map(t=>t.id===tile.id?{...t,used:false}:t));
+    };
 
-            return (
-                <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100dvh', background:'var(--paper)', display:'flex', flexDirection:'column', paddingBottom:80 }}>
-                    {/* Header */}
-                    <div style={{ padding:'20px 20px 16px', background:'white', borderBottom:'2px solid var(--card-border)', position:'sticky', top:0, zIndex:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                        <div>
-                            <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:22, letterSpacing:'-0.03em', color:'var(--ink)' }}>toki pona</div>
-                            <div style={{ fontSize:12, color:'var(--muted)', fontWeight:500 }}>{learnedWords.length}/{TOTAL_WORDS} words learned</div>
-                        </div>
-                        <div style={{ display:'flex', gap:16, fontFamily:'Syne', fontWeight:800, fontSize:14 }}>
-                            <span style={{ color:'#ef4444' }}>❤️ 5</span>
-                            <span style={{ color:'#f97316' }}>🔥 {streaks}</span>
-                        </div>
+    const placedWords = placed.map(t=>t.word);
+    const isCorrect = JSON.stringify(placedWords)===JSON.stringify(answer);
+
+    const slotCls = placed.length>0 ? (status==='idle'?'has-content':status==='correct'?'correct':'wrong') : '';
+
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column'}}>
+            <LessonHeader idx={idx} total={total} hearts={hearts} onQuit={()=>onNext('quit')} color={color} />
+            <div style={{flex:1,padding:'22px 16px 0',overflowY:'auto'}}>
+                <div className="lbl" style={{marginBottom:10}}>Cümleyi Türkçe'den Toki Pona'ya çevir</div>
+                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:22,color:'var(--tx)',marginBottom:4,lineHeight:1.35}}>{sentence.tr}</div>
+                {sentence.hint&&<div style={{fontSize:12,color:'var(--tx2)',fontStyle:'italic',marginBottom:16}}>💡 {sentence.hint}</div>}
+                {!sentence.hint&&<div style={{marginBottom:16}}/>}
+
+                {/* Answer slot */}
+                <div className={`slot-area ${slotCls}`} ref={slotRef} onClick={e=>{ if(e.target===slotRef.current&&placed.length>0) removePlaced(placed[placed.length-1]); }}>
+                    {placed.length===0&&<span style={{color:'var(--tx2)',fontSize:13}}>Kelimelere dokun…</span>}
+                    {placed.map(tile=>(
+                        <span key={tile.id} className="tile placed" onClick={()=>removePlaced(tile)}
+                            style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:16,color:status==='correct'?'var(--gn)':status==='wrong'?'var(--rd)':'var(--tx)'}}>
+                            {tile.word}
+                        </span>
+                    ))}
+                </div>
+                {status!=='idle'&&(
+                    <div className="au" style={{marginTop:8,fontSize:13,color:'var(--ac)',fontFamily:"'Lora',serif",fontWeight:600}}>
+                        Doğru sıra: {answer.join(' ')}
                     </div>
+                )}
 
-                    {/* Units path */}
-                    <div style={{ flex:1, padding:'32px 24px', display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
-                        {WORD_DATA.map((unit, idx) => {
-                            const learned = unit.words.filter(w => learnedWords.includes(w.w)).length;
-                            const total = unit.words.length;
-                            const isComplete = learned === total;
-                            const prevDone = idx === 0 || WORD_DATA[idx-1].words.every(w => learnedWords.includes(w.w));
-                            const isLocked = !prevDone;
-                            const pct = Math.round((learned / total) * 100);
+                {/* Word bank */}
+                <div style={{marginTop:18,display:'flex',flexWrap:'wrap',gap:8}}>
+                    {bank.map(tile=>(
+                        <button key={tile.id} className={`tile ${tile.used?'used':''}`} onClick={()=>!tile.used&&placeTile(tile)}
+                            style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:16,opacity:tile.used?.25:1}}>
+                            {tile.word}
+                        </button>
+                    ))}
+                </div>
+            </div>
+            <FeedbackBar status={status} correctLabel={answer.join(' ')} hearts={hearts}
+                onAction={()=>{
+                    if(status==='idle'){ if(placed.length===0)return; onCheck(isCorrect); }
+                    else onNext(status);
+                }} />
+        </div>
+    );
+}
 
+/* ═══════════════════════════════════════════════════════
+   LESSON MANAGER
+═══════════════════════════════════════════════════════ */
+function LessonView({ unit, appState, onFinish }) {
+    const queue = useRef(buildSessionQueue(unit, appState.srs, appState.learned)).current;
+    const [idx, setIdx] = useState(0);
+    const [hearts, setHearts] = useState(5);
+    const [status, setStatus] = useState('idle');
+    const [gained, setGained] = useState({ newWords:[], srsUpdates:{} });
+
+    const card = queue[idx];
+    if (!card) { onFinish(gained, true); return null; }
+
+    const advance = useCallback((result) => {
+        if(result==='quit'){ onFinish(gained, false); return; }
+        // Track newly learned words from teach cards
+        if(card.type==='teach'){
+            setGained(g=>({...g, newWords:[...new Set([...g.newWords,card.word.w])]}));
+        }
+        if(idx < queue.length-1){ setIdx(i=>i+1); setStatus('idle'); }
+        else onFinish(gained, true);
+    }, [idx, card, gained, queue, onFinish]);
+
+    const handleCheck = useCallback((correct) => {
+        setStatus(correct ? 'correct' : 'wrong');
+        if(!correct) setHearts(h=>Math.max(0,h-1));
+        // SRS update for quiz cards
+        if(card.word){
+            setGained(g=>({
+                ...g,
+                srsUpdates:{
+                    ...g.srsUpdates,
+                    [card.word.w]: srsUpdate(appState.srs[card.word.w]||{}, correct)
+                }
+            }));
+        }
+    }, [card, appState.srs]);
+
+    const commonProps = { idx, total:queue.length, hearts, color:unit.color, status,
+        onCheck:handleCheck, onNext:advance };
+
+    if(card.type==='teach') return <TeachCard word={card.word} onNext={()=>advance('next')} />;
+    if(card.type==='pick_tp') return <PickTpCard card={card} {...commonProps} />;
+    if(card.type==='pick_tr') return <PickTrCard card={card} {...commonProps} />;
+    if(card.type==='sentence'){
+        const s = card.sentence;
+        if(s.type==='fill') return <FillCard card={s} {...commonProps} />;
+        if(s.type==='build') return <BuildCard card={card} {...commonProps} />;
+    }
+    // fallback
+    return <PickTpCard card={card} {...commonProps} />;
+}
+
+/* ═══════════════════════════════════════════════════════
+   REVIEW SESSION (spaced repetition due cards)
+═══════════════════════════════════════════════════════ */
+function buildReviewQueue(srsCards, learned) {
+    const due = learned.filter(w => srsCards[w] && isDue(srsCards[w]));
+    const sorted = due.sort((a,b)=>(srsCards[a]?.errors||0)-(srsCards[b]?.errors||0));
+    const toReview = sorted.slice(0, 15);
+    const queue = [];
+    toReview.forEach(key => {
+        const word = wFind(key);
+        if(!word) return;
+        const d = shuffle(WORDS.filter(w=>w.w!==key)).slice(0,3);
+        queue.push({ type:'pick_tp', word, prompt:word.m, correct:word.w, options:shuffle([word,...d]), isReview:true });
+        if(Math.random() > 0.4) {
+            const d2 = shuffle(WORDS.filter(w=>w.w!==key)).slice(0,3);
+            queue.push({ type:'pick_tr', word, prompt:word.w, correct:word.m,
+                options:shuffle([{k:key,l:word.m},...d2.map(x=>({k:x.w,l:x.m}))]), isReview:true });
+        }
+    });
+    // Add some sentence exercises too
+    const dueSentences = shuffle(SENTENCES.filter(s => {
+        const wordsInSentence = s.type==='build'? s.answer : s.sentence;
+        return wordsInSentence.some(w=>due.includes(w));
+    })).slice(0,4);
+    dueSentences.forEach(s=>queue.push({type:'sentence',sentence:s}));
+    return shuffle(queue);
+}
+
+function ReviewView({ appState, onFinish }) {
+    const queue = useRef(buildReviewQueue(appState.srs, appState.learned)).current;
+    const [idx, setIdx] = useState(0);
+    const [hearts, setHearts] = useState(5);
+    const [status, setStatus] = useState('idle');
+    const [updates, setUpdates] = useState({});
+
+    if(queue.length===0){
+        return (
+            <div style={{minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center'}}>
+                <div style={{fontSize:64,marginBottom:16}}>✨</div>
+                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:24,color:'var(--ac)',marginBottom:8}}>Tekrar Yok!</div>
+                <div style={{color:'var(--tx2)',fontSize:14,marginBottom:28,lineHeight:1.6}}>Bugün tekrar edilecek kelime yok. Yeni bir ünite başla veya yarın tekrar gel!</div>
+                <button className="btn ba" style={{maxWidth:280}} onClick={()=>onFinish({},false)}>Geri Dön</button>
+            </div>
+        );
+    }
+
+    const card = queue[idx];
+    if(!card){ onFinish(updates, true); return null; }
+
+    const advance = useCallback((result) => {
+        if(result==='quit'){ onFinish(updates,false); return; }
+        if(idx < queue.length-1){ setIdx(i=>i+1); setStatus('idle'); }
+        else onFinish(updates, true);
+    },[idx,updates,queue,onFinish]);
+
+    const handleCheck = useCallback((correct) => {
+        setStatus(correct?'correct':'wrong');
+        if(!correct) setHearts(h=>Math.max(0,h-1));
+        if(card.word) setUpdates(u=>({...u,[card.word.w]:srsUpdate(appState.srs[card.word.w]||{},correct)}));
+    },[card,appState.srs]);
+
+    const cp = {idx,total:queue.length,hearts,color:'var(--tl)',status,onCheck:handleCheck,onNext:advance};
+
+    if(card.type==='pick_tp') return <PickTpCard card={card} {...cp} />;
+    if(card.type==='pick_tr') return <PickTrCard card={card} {...cp} />;
+    if(card.type==='sentence'){
+        const s=card.sentence;
+        if(s.type==='fill') return <FillCard card={s} {...cp} />;
+        if(s.type==='build') return <BuildCard card={card} {...cp} />;
+    }
+    return <PickTpCard card={card} {...cp} />;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MAP VIEW
+═══════════════════════════════════════════════════════ */
+function MapView({ appState, startLesson }) {
+    const dueCount = appState.learned.filter(w => appState.srs[w] && isDue(appState.srs[w])).length;
+
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column',paddingBottom:80}}>
+            <div className="hdr" style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                <div>
+                    <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:21,color:'var(--ac)'}}>toki pona</div>
+                    <div style={{fontSize:12,color:'var(--tx2)',marginTop:2}}>{appState.learned.length}/{WORDS.length} kelime öğrenildi</div>
+                </div>
+                <div style={{display:'flex',gap:12,fontSize:13,fontWeight:700}}>
+                    {dueCount>0&&<span style={{background:'var(--ac2)',border:'1px solid var(--ac)',color:'var(--ac)',padding:'3px 10px',borderRadius:99,fontSize:12,fontWeight:800}}>🔁 {dueCount} tekrar</span>}
+                    <span style={{color:'var(--gd)'}}>🔥 {appState.streak}</span>
+                </div>
+            </div>
+
+            {/* Info strip */}
+            <div style={{margin:'12px 14px 0',padding:'12px 14px',background:'var(--sf)',border:'1.5px solid var(--bd)',borderLeft:'3px solid var(--ac)',borderRadius:11}}>
+                <div style={{fontSize:12,color:'var(--tx2)',lineHeight:1.6}}>
+                    <strong style={{color:'var(--ac)',fontFamily:"'Lora',serif"}}>toki pona</strong> — sadece 137 kelimeden oluşan minimalist bir dil. Kelimeyi öğren, cümle kur, pekiştir!
+                </div>
+            </div>
+
+            <div style={{flex:1,padding:'12px 14px 8px',display:'flex',flexDirection:'column',gap:9}}>
+                {UNITS.map((unit,i)=>{
+                    const words = unit.wk.map(wFind).filter(Boolean);
+                    const learned = words.filter(w=>appState.learned.includes(w.w)).length;
+                    const total = words.length;
+                    const complete = learned===total;
+                    const prevDone = i===0 || (() => {
+                        const p=UNITS[i-1];
+                        return p.wk.map(wFind).filter(Boolean).every(w=>appState.learned.includes(w.w));
+                    })();
+                    const locked = !prevDone;
+                    const pct = total>0?Math.round((learned/total)*100):0;
+                    const dueInUnit = words.filter(w=>appState.srs[w.w]&&isDue(appState.srs[w.w])).length;
+
+                    return (
+                        <button key={unit.id} disabled={locked} onClick={()=>!locked&&startLesson(unit.id)}
+                            style={{background:'var(--sf)',border:`1.5px solid ${complete?unit.color+'55':'var(--bd)'}`,borderLeft:`3px solid ${locked?'var(--bd)':unit.color}`,borderRadius:12,padding:'12px 14px',display:'flex',alignItems:'center',gap:12,cursor:locked?'not-allowed':'pointer',opacity:locked?.4:1,transition:'all .2s',textAlign:'left',width:'100%'}}>
+                            <div style={{width:46,height:46,borderRadius:10,background:locked?'var(--sf2)':complete?unit.color+'33':unit.color+'1a',display:'flex',alignItems:'center',justifyContent:'center',fontSize:20,flexShrink:0}}>
+                                {locked?'🔒':complete?'⭐':unit.emoji}
+                            </div>
+                            <div style={{flex:1,minWidth:0}}>
+                                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:14,color:locked?'var(--tx2)':'var(--tx)',marginBottom:1}}>{unit.title}</div>
+                                <div style={{fontSize:12,color:'var(--tx2)',marginBottom:locked?0:5}}>{unit.sub}</div>
+                                {!locked&&(
+                                    <div style={{display:'flex',alignItems:'center',gap:8}}>
+                                        <div className="pg" style={{flex:1}}>
+                                            <div className="pf" style={{width:`${pct}%`,background:complete?unit.color:unit.color+'cc'}} />
+                                        </div>
+                                        <div style={{fontSize:10,fontWeight:700,color:'var(--tx2)',flexShrink:0}}>{learned}/{total}</div>
+                                    </div>
+                                )}
+                            </div>
+                            <div style={{display:'flex',flexDirection:'column',alignItems:'flex-end',gap:4,flexShrink:0}}>
+                                {!locked&&dueInUnit>0&&<span style={{fontSize:9,fontWeight:800,color:'var(--ac)',background:'var(--ac2)',padding:'1px 6px',borderRadius:99}}>🔁 {dueInUnit}</span>}
+                                {!locked&&<div style={{color:complete?unit.color:'var(--tx2)',fontSize:17}}>{complete?'✓':'›'}</div>}
+                            </div>
+                        </button>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+/* ═══════════════════════════════════════════════════════
+   REVIEW DASHBOARD
+═══════════════════════════════════════════════════════ */
+function ReviewDashboard({ appState, startReview }) {
+    const due = appState.learned.filter(w => appState.srs[w] && isDue(appState.srs[w]));
+    const upcoming = appState.learned
+        .filter(w => appState.srs[w] && !isDue(appState.srs[w]))
+        .map(w => ({ w, days: daysUntil(appState.srs[w].nextReview) }))
+        .sort((a,b)=>a.days-b.days)
+        .slice(0,5);
+
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column',paddingBottom:80}}>
+            <div className="hdr">
+                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:20,color:'var(--tx)',marginBottom:2}}>Tekrar Seansı</div>
+                <div style={{fontSize:12,color:'var(--tx2)'}}>Aralıklı tekrar — kalıcı hafıza</div>
+            </div>
+            <div style={{padding:'14px',display:'flex',flexDirection:'column',gap:12}}>
+                {/* Due now */}
+                <div style={{background:`${due.length>0?'var(--ac2)':'var(--sf)'}`,border:`1.5px solid ${due.length>0?'var(--ac)':'var(--bd)'}`,borderRadius:14,padding:'18px'}}>
+                    <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:28,color:due.length>0?'var(--ac)':'var(--tx2)'}}>{due.length}</div>
+                    <div style={{fontSize:13,color:due.length>0?'var(--ac)':'var(--tx2)',marginBottom:14}}>kelime seni bekliyor</div>
+                    <button className="btn bt" disabled={due.length===0} onClick={startReview}>
+                        {due.length>0 ? `${due.length} kartı tekrar et →` : 'Bugün tekrar yok ✓'}
+                    </button>
+                </div>
+
+                {/* How SRS works */}
+                <div className="card" style={{borderLeft:'3px solid var(--tl)'}}>
+                    <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:13,color:'var(--tl)',marginBottom:8}}>🧠 Aralıklı Tekrar Nasıl Çalışır?</div>
+                    <div style={{fontSize:12,color:'var(--tx2)',lineHeight:1.7}}>
+                        Bir kelimeyi doğru cevaplarsan, onu <strong style={{color:'var(--tx)'}}>daha geç</strong> tekrar görürsün (1 gün → 3 gün → 7 gün → ...). Yanlış yaparsan <strong style={{color:'var(--tx)'}}>sıfırlanır</strong>. Beyin tam unutmak üzereyken hatırlama, kalıcı hafızayı oluşturur.
+                    </div>
+                </div>
+
+                {/* Upcoming reviews */}
+                {upcoming.length>0&&(
+                    <div>
+                        <div className="lbl" style={{marginBottom:8,paddingLeft:2}}>Yaklaşan Tekrarlar</div>
+                        {upcoming.map(({w,days})=>{
+                            const word = wFind(w);
+                            if(!word) return null;
+                            const srs = appState.srs[w];
                             return (
-                                <div key={unit.id} style={{ display:'flex', flexDirection:'column', alignItems:'center', width:'100%' }}>
-                                    {/* Connector line */}
-                                    {idx > 0 && (
-                                        <div style={{ width:4, height:32, background: prevDone ? unit.bg + '55' : 'var(--card-border)', borderRadius:99, margin:'0 0' }} />
-                                    )}
-
-                                    <div style={{ display:'flex', alignItems:'center', gap:20, width:'100%', maxWidth:320 }}>
-                                        {/* Offset alternate units for visual path */}
-                                        <div style={{ flex: idx % 2 === 0 ? '0 0 0px' : '1' }} />
-
-                                        <button
-                                            className={`unit-node ${isLocked ? 'locked' : ''}`}
-                                            style={{
-                                                background: isLocked ? '#e2e8f0' : isComplete ? '#fbbf24' : unit.bg,
-                                                boxShadow: isLocked ? 'none' : `0 8px 0 ${isComplete ? '#b45309' : unit.shadow}, 0 2px 20px ${unit.bg}55`,
-                                                flexShrink: 0,
-                                            }}
-                                            onClick={() => !isLocked && startLesson(unit.id)}
-                                        >
-                                            {isLocked ? '🔒' : isComplete ? '⭐' : unit.words[0].e}
-                                        </button>
-
-                                        <div style={{ flex: idx % 2 === 0 ? '1' : '0 0 0px' }} />
-
-                                        {/* Label beside node */}
-                                        <div style={{ minWidth:100, textAlign: idx % 2 === 0 ? 'left' : 'right' }}>
-                                            <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:15, color: isLocked ? 'var(--muted)' : 'var(--ink)' }}>{unit.title}</div>
-                                            {!isLocked && (
-                                                <div style={{ marginTop:6 }}>
-                                                    <div style={{ fontSize:11, color:'var(--muted)', fontWeight:600, marginBottom:4 }}>{learned}/{total} words</div>
-                                                    <div className="progress-bar" style={{ width:90 }}>
-                                                        <div className="progress-fill" style={{ width:`${pct}%`, background: isComplete ? '#fbbf24' : unit.bg }} />
-                                                    </div>
-                                                </div>
-                                            )}
+                                <div key={w} className="card" style={{display:'flex',alignItems:'center',gap:12,marginBottom:6,padding:'11px 13px'}}>
+                                    <span style={{fontSize:22}}>{word.e}</span>
+                                    <div style={{flex:1}}>
+                                        <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:14,color:'var(--ac)'}}>{word.w}</div>
+                                        <div style={{fontSize:11,color:'var(--tx2)',marginTop:1}}>{word.m.split(',')[0]}</div>
+                                    </div>
+                                    <div style={{textAlign:'right',flexShrink:0}}>
+                                        <div style={{fontSize:11,fontWeight:700,color:'var(--tx2)'}}>{days} gün sonra</div>
+                                        <div style={{fontSize:10,color:'var(--gn)',marginTop:1}}>
+                                            {['','1g','3g','7g','14g','30g','60g'][srs?.interval||0]||''}
                                         </div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
+                )}
 
-                    <BottomNav active="map" setView={() => {}} />
+                {appState.learned.length===0&&(
+                    <div style={{textAlign:'center',padding:40,color:'var(--tx2)'}}>
+                        <div style={{fontSize:36,marginBottom:12}}>🌱</div>
+                        <div style={{fontSize:14,lineHeight:1.6}}>Henüz kelime öğrenmemişsin. Öğren sekmesinden başla!</div>
+                    </div>
+                )}
+            </div>
+        </div>
+    );
+}
+
+/* ═══════════════════════════════════════════════════════
+   DICTIONARY VIEW
+═══════════════════════════════════════════════════════ */
+const GL={temel:'🌱 Temel',partikel:'⚙️ Partiküller',insan:'👤 İnsan',doga:'🌿 Doğa',nesne:'📦 Nesneler',eylem:'⚡ Eylemler',sifat:'🎨 Sıfatlar',zaman:'⏰ Zaman',diger:'✨ Diğer'};
+
+function DictView({ appState }) {
+    const [q,setQ]=useState(''); const [f,setF]=useState('all');
+    const filtered=useMemo(()=>WORDS.filter(w=>{ const ms=!q||w.w.includes(q.toLowerCase())||w.m.toLowerCase().includes(q.toLowerCase()); const ml=appState.learned.includes(w.w); const mf=f==='all'||( f==='learned'&&ml)||(f==='locked'&&!ml); return ms&&mf; }),[q,f,appState.learned]);
+    const groups=useMemo(()=>{ const g={}; filtered.forEach(w=>{(g[w.g]=g[w.g]||[]).push(w);}); return g; },[filtered]);
+    return (
+        <div style={{maxWidth:480,margin:'0 auto',minHeight:'100dvh',background:'var(--bg)',display:'flex',flexDirection:'column',paddingBottom:80}}>
+            <div className="hdr">
+                <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:20,color:'var(--tx)',marginBottom:8}}>Sözlük</div>
+                <input className="sinput" type="text" placeholder="Kelime ara…" value={q} onChange={e=>setQ(e.target.value)} />
+                <div style={{display:'flex',gap:6,marginTop:7}}>
+                    {[['all','Tümü'],['learned','Öğrendim'],['locked','Kilitli']].map(([v,l])=>(
+                        <button key={v} onClick={()=>setF(v)} style={{padding:'4px 11px',borderRadius:99,border:'1.5px solid',borderColor:f===v?'var(--ac)':'var(--bd)',background:f===v?'var(--ac2)':'transparent',color:f===v?'var(--ac)':'var(--tx2)',fontSize:11,fontWeight:700,cursor:'pointer'}}>{l}</button>
+                    ))}
+                    <span style={{marginLeft:'auto',fontSize:11,color:'var(--tx2)',alignSelf:'center',fontWeight:700}}>{appState.learned.length}/{WORDS.length}</span>
                 </div>
-            );
-        }
-
-        function DictView({ learnedWords, setView }) {
-            const [search, setSearch] = useState('');
-
-            return (
-                <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100dvh', background:'var(--paper)', display:'flex', flexDirection:'column', paddingBottom:80 }}>
-                    <div style={{ padding:'20px 20px 12px', background:'white', borderBottom:'2px solid var(--card-border)', position:'sticky', top:0, zIndex:10 }}>
-                        <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:22, letterSpacing:'-0.03em', marginBottom:12 }}>Dictionary</div>
-                        <input
-                            type="text"
-                            placeholder="Search words…"
-                            value={search}
-                            onChange={e => setSearch(e.target.value)}
-                            style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'2px solid var(--card-border)', fontFamily:'Sora', fontSize:14, outline:'none', background:'var(--paper)' }}
-                        />
-                        <div style={{ fontSize:12, color:'var(--muted)', marginTop:8, fontWeight:600 }}>{learnedWords.length} / {TOTAL_WORDS} unlocked</div>
-                    </div>
-
-                    <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:20 }}>
-                        {WORD_DATA.map(group => {
-                            const filtered = group.words.filter(w =>
-                                !search || w.w.includes(search.toLowerCase()) || w.m.toLowerCase().includes(search.toLowerCase())
-                            );
-                            if (!filtered.length) return null;
-                            return (
-                                <div key={group.id}>
-                                    <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:8, paddingLeft:4 }}>{group.title}</div>
-                                    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-                                        {filtered.map(word => {
-                                            const unlocked = learnedWords.includes(word.w);
-                                            return (
-                                                <div key={word.w} className="card" style={{ display:'flex', alignItems:'center', gap:14, opacity: unlocked ? 1 : .55 }}>
-                                                    <span style={{ fontSize:28, lineHeight:1 }}>{unlocked ? word.e : '🔒'}</span>
-                                                    <div style={{ flex:1 }}>
-                                                        <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16 }}>{word.w}</div>
-                                                        <div style={{ fontSize:13, color:'var(--muted)', marginTop:2 }}>{unlocked ? word.m : 'Complete the lesson to unlock'}</div>
-                                                    </div>
-                                                    {unlocked && <span style={{ fontSize:11, fontWeight:700, color:'var(--green)', background:'#f0fdf4', padding:'3px 8px', borderRadius:99 }}>✓</span>}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-
-                    <BottomNav active="dict" setView={setView} />
-                </div>
-            );
-        }
-
-        function LearnCard({ card, onNext }) {
-            const [anim, setAnim] = useState(false);
-            useEffect(() => { setAnim(true); }, []);
-
-            return (
-                <div style={{ minHeight:'100dvh', background:`linear-gradient(160deg, ${card.word.e ? '#f0fdf4' : '#fff'} 0%, white 60%)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:28 }}>
-                    <div style={{ fontSize:12, fontFamily:'Syne', fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--green)', marginBottom:24 }}>
-                        ✦ New Word ✦
-                    </div>
-
-                    <div className={anim ? 'slide-up' : ''} style={{ width:'100%', maxWidth:340 }}>
-                        <div className="teach-card">
-                            <div style={{ fontSize:88, lineHeight:1, marginBottom:4 }}>{card.word.e}</div>
-                            <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:52, letterSpacing:'-0.04em', color:'var(--ink)' }}>{card.word.w}</div>
-                            <div style={{ color:'var(--muted)', fontSize:17, fontWeight:500, textAlign:'center', maxWidth:220, lineHeight:1.5 }}>{card.word.m}</div>
-                            <div style={{ width:'100%', height:2, background:'var(--card-border)', borderRadius:99, margin:'8px 0' }} />
-                            <div style={{ fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>tap to continue</div>
-                        </div>
-                    </div>
-
-                    <div style={{ marginTop:32, width:'100%', maxWidth:340 }}>
-                        <button className="btn btn-primary" onClick={onNext}>Got it! →</button>
-                    </div>
-                </div>
-            );
-        }
-
-        function QuizCard({ card, idx, total, hearts, onCheck, onNext, status }) {
-            const [selected, setSelected] = useState(null);
-            const footerRef = useRef(null);
-
-            // Reset selection on new card
-            useEffect(() => { setSelected(null); }, [card]);
-
-            const handleSelect = (w) => {
-                if (status !== 'idle') return;
-                setSelected(w);
-            };
-
-            const pct = ((idx + 1) / total) * 100;
-
-            return (
-                <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100dvh', background:'white', display:'flex', flexDirection:'column' }}>
-                    {/* Header */}
-                    <div style={{ padding:'16px 20px', display:'flex', alignItems:'center', gap:12 }}>
-                        <button onClick={() => onNext('quit')} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4, fontSize:20, lineHeight:1 }}>✕</button>
-                        <div className="progress-bar" style={{ flex:1 }}>
-                            <div className="progress-fill" style={{ width:`${pct}%` }} />
-                        </div>
-                        <Hearts total={5} remaining={hearts} />
-                    </div>
-
-                    {/* Content */}
-                    <div style={{ flex:1, padding:'24px 20px 0' }}>
-                        <div style={{ marginBottom:8, fontSize:12, fontFamily:'Syne', fontWeight:800, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.08em' }}>Choose the correct word</div>
-                        <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:26, letterSpacing:'-0.02em', marginBottom:6 }}>{card.meaning}</div>
-                        <div style={{ fontSize:36, marginBottom:28 }}>{card.emoji}</div>
-
-                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                            {card.options.map(opt => {
-                                let extra = '';
-                                if (status !== 'idle') {
-                                    if (opt.w === card.correct) extra = 'correct';
-                                    else if (selected === opt.w && status === 'wrong') extra = 'wrong';
-                                } else if (selected === opt.w) {
-                                    extra = 'selected';
-                                }
+            </div>
+            <div style={{padding:'10px 13px',display:'flex',flexDirection:'column',gap:12,overflowY:'auto'}}>
+                {Object.entries(groups).map(([g,words])=>(
+                    <div key={g}>
+                        <div style={{fontSize:10,fontWeight:800,color:'var(--tx2)',textTransform:'uppercase',letterSpacing:'.12em',marginBottom:6,paddingLeft:2}}>{GL[g]||g}</div>
+                        <div style={{display:'flex',flexDirection:'column',gap:4}}>
+                            {words.map(word=>{
+                                const ul=appState.learned.includes(word.w);
+                                const srs=appState.srs[word.w];
+                                const due=srs&&isDue(srs);
                                 return (
-                                    <button key={opt.w} className={`opt-btn ${extra}`} onClick={() => handleSelect(opt.w)}>
-                                        <span style={{ fontSize:42, lineHeight:1 }}>{opt.e}</span>
-                                        <span style={{ fontFamily:'Syne', fontWeight:800, fontSize:17, color:'var(--ink)' }}>{opt.w}</span>
-                                    </button>
+                                    <div key={word.w} className="card" style={{display:'flex',alignItems:'center',gap:12,opacity:ul?1:.4,padding:'10px 13px'}}>
+                                        <span style={{fontSize:22,flexShrink:0}}>{ul?word.e:'🔒'}</span>
+                                        <div style={{flex:1,minWidth:0}}>
+                                            <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:14,color:ul?'var(--ac)':'var(--tx2)'}}>{word.w}</div>
+                                            <div style={{fontSize:12,color:'var(--tx2)',marginTop:1,lineHeight:1.4}}>{ul?word.m:'Bu birimi tamamla'}</div>
+                                        </div>
+                                        {ul&&srs&&(
+                                            <div style={{flexShrink:0,textAlign:'right'}}>
+                                                {due
+                                                    ? <span style={{fontSize:10,fontWeight:800,color:'var(--ac)',background:'var(--ac2)',padding:'2px 7px',borderRadius:99}}>🔁</span>
+                                                    : <span style={{fontSize:10,fontWeight:700,color:'var(--gn)',background:'var(--gn2)',padding:'2px 7px',borderRadius:99}}>{daysUntil(srs.nextReview)}g</span>
+                                                }
+                                            </div>
+                                        )}
+                                    </div>
                                 );
                             })}
                         </div>
                     </div>
+                ))}
+                {filtered.length===0&&<div style={{textAlign:'center',color:'var(--tx2)',padding:40}}><div style={{fontSize:30,marginBottom:8}}>🔍</div>Kelime bulunamadı</div>}
+            </div>
+        </div>
+    );
+}
 
-                    {/* Footer */}
-                    <div ref={footerRef} style={{
-                        padding:'20px 20px 28px',
-                        borderTop: status !== 'idle' ? `3px solid ${status === 'correct' ? '#bbf7d0' : '#fecaca'}` : '2px solid var(--card-border)',
-                        background: status === 'correct' ? '#f0fdf4' : status === 'wrong' ? '#fef2f2' : 'white',
-                        transition: 'background .2s, border-color .2s',
-                    }}>
-                        {status !== 'idle' && (
-                            <div className="slide-up" style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
-                                <div style={{ width:40, height:40, borderRadius:99, background: status === 'correct' ? 'var(--green)' : '#ef4444', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'white', flexShrink:0 }}>
-                                    {status === 'correct' ? '✓' : '✕'}
-                                </div>
-                                <div>
-                                    <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:17, color: status === 'correct' ? '#15803d' : '#b91c1c' }}>
-                                        {status === 'correct' ? 'Excellent! 🎉' : 'Not quite!'}
-                                    </div>
-                                    {status === 'wrong' && <div style={{ fontSize:13, color:'var(--muted)', marginTop:2 }}>Correct: <strong>{card.correct}</strong></div>}
-                                </div>
-                            </div>
-                        )}
-                        <button
-                            className={`btn ${status === 'wrong' ? 'btn-danger' : 'btn-primary'}`}
-                            disabled={status === 'idle' && !selected}
-                            onClick={() => {
-                                if (status === 'idle') onCheck(selected);
-                                else onNext(status);
-                            }}
-                        >
-                            {status === 'idle' ? 'Check' : hearts <= 0 ? 'End Lesson' : 'Continue →'}
-                        </button>
-                    </div>
-                </div>
-            );
-        }
-
-        function LessonView({ unit, learnedWords, onFinish }) {
-            const queue = useRef(buildLessonQueue(unit, learnedWords)).current;
-            const [idx, setIdx] = useState(0);
-            const [hearts, setHearts] = useState(5);
-            const [status, setStatus] = useState('idle'); // idle | correct | wrong
-            const [newWords, setNewWords] = useState([]);
-
-            const card = queue[idx];
-
-            const handleCheck = (selected) => {
-                if (selected === card.correct) {
-                    setStatus('correct');
-                } else {
-                    setStatus('wrong');
-                    setHearts(h => Math.max(0, h - 1));
+/* ═══════════════════════════════════════════════════════
+   SUMMARY SCREEN
+═══════════════════════════════════════════════════════ */
+function SummaryView({ unit, newCount, reviewCount, onContinue }) {
+    return (
+        <div style={{minHeight:'100dvh',background:`linear-gradient(160deg, ${unit?.color||'var(--tl)'}22 0%, var(--bg) 50%)`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:32,textAlign:'center',maxWidth:480,margin:'0 auto'}}>
+            <div style={{fontSize:72,lineHeight:1,marginBottom:12,animation:'pop .5s ease'}}>{newCount>0?'🏆':'🔁'}</div>
+            <div style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:26,color:'var(--ac)',marginBottom:5}}>
+                {newCount>0 ? 'Birim Tamamlandı!' : 'Harika Tekrar!'}
+            </div>
+            <div style={{color:'var(--tx2)',fontSize:13,marginBottom:24}}>{unit?.title||''}</div>
+            <div className="card" style={{width:'100%',maxWidth:290,marginBottom:22,textAlign:'center'}}>
+                {newCount>0
+                    ? <p style={{fontWeight:500,color:'var(--tx)',lineHeight:1.65,fontSize:14}}><span style={{color:'var(--ac)',fontFamily:"'Lora',serif",fontWeight:700,fontSize:17}}>{newCount} yeni kelime</span> öğrendin! Bunlar hafızana kaydedildi 🌱</p>
+                    : <p style={{fontWeight:500,color:'var(--tx)',lineHeight:1.65,fontSize:14}}>Kelimeler pekişiyor. Aralıklı tekrar hafızayı güçlendirir 🧠</p>
                 }
-            };
+            </div>
+            <div style={{fontSize:12,color:'var(--tx2)',marginBottom:18,lineHeight:1.6,maxWidth:260}}>
+                Bu kelimeler <strong style={{color:'var(--tx)'}}>aralıklı tekrar</strong> sistemine eklendi. Yakında tekrar karşına çıkacaklar!
+            </div>
+            <button className="btn ba" style={{maxWidth:290}} onClick={onContinue}>Devam Et →</button>
+        </div>
+    );
+}
 
-            const advance = useCallback((result) => {
-                if (result === 'quit') { onFinish(newWords, false); return; }
+/* ═══════════════════════════════════════════════════════
+   APP ROOT
+═══════════════════════════════════════════════════════ */
+function App() {
+    const [appState, setAppState] = useState(loadState);
+    const [view, setView] = useState('map');
+    const [mode, setMode] = useState(null); // 'lesson' | 'review'
+    const [activeUnit, setActiveUnit] = useState(null);
+    const [summary, setSummary] = useState(null);
 
-                // Track newly learned words from learn cards
-                let updated = newWords;
-                if (card.type === 'learn' && !learnedWords.includes(card.word.w) && !newWords.includes(card.word.w)) {
-                    updated = [...newWords, card.word.w];
-                    setNewWords(updated);
-                }
+    useEffect(()=>saveState(appState), [appState]);
 
-                if (idx < queue.length - 1) {
-                    setIdx(i => i + 1);
-                    setStatus('idle');
-                } else {
-                    onFinish(updated, true);
-                }
-            }, [idx, card, newWords, learnedWords, queue, onFinish]);
+    const dueCount = useMemo(()=>
+        appState.learned.filter(w=>appState.srs[w]&&isDue(appState.srs[w])).length,
+        [appState]);
 
-            if (card.type === 'learn') {
-                return <LearnCard card={card} onNext={() => advance('learn')} />;
-            }
+    const mergeResults = useCallback((gained, srsUpdates) => {
+        setAppState(prev => {
+            const newLearned = [...new Set([...prev.learned, ...gained.newWords])];
+            const newSrs = { ...prev.srs };
+            // Apply SRS updates
+            Object.entries({ ...(gained.srsUpdates||{}), ...srsUpdates }).forEach(([k,v])=>{ newSrs[k]=v; });
+            // New words: initialize SRS
+            gained.newWords.forEach(w => { if(!newSrs[w]) newSrs[w] = srsUpdate({},false); });
+            return { ...prev, learned:newLearned, srs:newSrs, lastStudied: Date.now() };
+        });
+    }, []);
 
-            return (
-                <QuizCard
-                    card={card}
-                    idx={idx}
-                    total={queue.length}
-                    hearts={hearts}
-                    status={status}
-                    onCheck={handleCheck}
-                    onNext={advance}
-                />
-            );
-        }
+    const startLesson = useCallback((unitId) => {
+        setActiveUnit(UNITS.find(u=>u.id===unitId));
+        setMode('lesson'); setView('lesson');
+    }, []);
 
-        function SummaryView({ unitTitle, newCount, onContinue }) {
-            return (
-                <div style={{ minHeight:'100dvh', background:'linear-gradient(160deg, #fef9c3, #fef3c7 60%, #fde68a)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:32, textAlign:'center' }}>
-                    <div style={{ fontSize:90, lineHeight:1, marginBottom:8, animation:'pop .4s ease' }}>🏆</div>
-                    <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:32, letterSpacing:'-0.03em', color:'#78350f', marginBottom:8 }}>
-                        Unit Complete!
-                    </div>
-                    <div style={{ color:'#92400e', fontSize:16, fontWeight:500, marginBottom:32 }}>{unitTitle}</div>
+    const startReview = useCallback(() => {
+        setMode('review'); setView('lesson');
+    }, []);
 
-                    <div className="card" style={{ width:'100%', maxWidth:320, marginBottom:32, background:'rgba(255,255,255,.6)', backdropFilter:'blur(8px)' }}>
-                        {newCount > 0
-                            ? <p style={{ fontWeight:600, color:'#78350f' }}>You learned <strong>{newCount} new word{newCount !== 1 ? 's' : ''}</strong> this lesson! Keep it up 🌱</p>
-                            : <p style={{ fontWeight:600, color:'#78350f' }}>Great review! You're solidifying your knowledge. 💪</p>
-                        }
-                    </div>
+    const finishLesson = useCallback((gained, completed) => {
+        mergeResults(gained, {});
+        if(completed){
+            setSummary({ unit:activeUnit, newCount:gained.newWords.length });
+            setView('summary');
+        } else setView('map');
+    }, [activeUnit, mergeResults]);
 
-                    <button className="btn btn-primary" style={{ maxWidth:320, background:'#d97706', border:'none' }} onClick={onContinue}>
-                        Continue →
-                    </button>
-                </div>
-            );
-        }
+    const finishReview = useCallback((updates, completed) => {
+        setAppState(prev=>{
+            const newSrs={...prev.srs};
+            Object.entries(updates).forEach(([k,v])=>newSrs[k]=v);
+            return {...prev,srs:newSrs};
+        });
+        setView('review');
+    }, []);
 
-        // ─────────────────────────────────────────────────────────
-        //  APP
-        // ─────────────────────────────────────────────────────────
-        function App() {
-            const [view, setView] = useState('map'); // map | dict | lesson | summary
-            const [activeUnit, setActiveUnit] = useState(null);
-            const [learnedWords, setLearnedWords] = useState(() => {
-                try { return JSON.parse(localStorage.getItem('tp_learned') || '[]'); }
-                catch { return []; }
-            });
-            const [lastNewCount, setLastNewCount] = useState(0);
+    if(view==='lesson'){
+        if(mode==='lesson'&&activeUnit) return <LessonView unit={activeUnit} appState={appState} onFinish={finishLesson} />;
+        if(mode==='review') return <ReviewView appState={appState} onFinish={finishReview} />;
+    }
+    if(view==='summary'&&summary){
+        return <SummaryView unit={summary.unit} newCount={summary.newCount} onContinue={()=>setView('map')} />;
+    }
 
-            // Persist progress
-            useEffect(() => {
-                try { localStorage.setItem('tp_learned', JSON.stringify(learnedWords)); }
-                catch {}
-            }, [learnedWords]);
+    return (
+        <div>
+            {view==='map'    && <MapView appState={appState} startLesson={startLesson} />}
+            {view==='review' && <ReviewDashboard appState={appState} startReview={startReview} />}
+            {view==='dict'   && <DictView appState={appState} />}
+            <BottomNav active={view} setView={setView} dueCount={dueCount} />
+        </div>
+    );
+}
 
-            const startLesson = (unitId) => {
-                setActiveUnit(WORD_DATA.find(u => u.id === unitId));
-                setView('lesson');
-            };
-
-            const finishLesson = (newWords, completed) => {
-                setLearnedWords(prev => {
-                    const merged = [...prev];
-                    newWords.forEach(w => { if (!merged.includes(w)) merged.push(w); });
-                    return merged;
-                });
-                setLastNewCount(newWords.length);
-                setView(completed ? 'summary' : 'map');
-            };
-
-            if (view === 'lesson' && activeUnit) {
-                return <LessonView unit={activeUnit} learnedWords={learnedWords} onFinish={finishLesson} />;
-            }
-
-            if (view === 'summary') {
-                return <SummaryView unitTitle={activeUnit?.title} newCount={lastNewCount} onContinue={() => setView('map')} />;
-            }
-
-            if (view === 'dict') {
-                return <DictView learnedWords={learnedWords} setView={setView} />;
-            }
-
-            return (
-                <div>
-                    <MapView learnedWords={learnedWords} startLesson={startLesson} />
-                    <BottomNav active="map" setView={setView} />
-                </div>
-            );
-        }
-
-        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-    </script>
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
 </body>
 </html>
