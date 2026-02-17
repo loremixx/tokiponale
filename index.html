@@ -3,246 +3,393 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Toki Pona Learning</title>
+    <title>Toki Pona Master</title>
     
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
-        body { font-family: 'Nunito', sans-serif; background-color: #f8fafc; }
-        .animate-in { animation: fadeIn 0.3s ease-out forwards; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        body { font-family: 'Nunito', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
+        .slide-in { animation: slideUp 0.3s ease-out forwards; }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Hide scrollbar for clean UI */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
+        const { Book, Map, Volume2, Star, Check, X, Lock } = lucide;
 
-        // --- CURRICULUM DATA ---
-        const CURRICULUM = [
-            {
-                id: 1,
-                title: "Unit 1: The Basics",
-                description: "Saying hello & simple feelings.",
-                color: "bg-green-500",
-                exercises: [
-                    {
-                        id: '1-1', type: 'vocab', prompt: 'Which of these means "Good"?',
-                        options: [ { text: 'ike', image: '👎' }, { text: 'pona', image: '👍' }, { text: 'suli', image: '🐘' }, { text: 'lili', image: '🐜' } ],
-                        correctAnswer: 'pona', tip: "'pona' means good, simple, or friendly."
-                    },
-                    {
-                        id: '1-2', type: 'translate_tp_en', prompt: 'Translate this sentence',
-                        question: 'toki!', words: ['Hello!', 'Goodbye', 'Food', 'Me'],
-                        correctAnswer: ['Hello!'], tip: "'toki' is used for hello, goodbye, and speech."
-                    },
-                    {
-                        id: '1-3', type: 'translate_tp_en', prompt: 'Translate this sentence',
-                        question: 'mi pona', words: ['I', 'am', 'good', 'you', 'bad', 'is'],
-                        correctAnswer: ['I', 'am', 'good'], tip: "No 'li' is used when the subject is 'mi'."
-                    }
-                ]
-            },
-            {
-                id: 2,
-                title: "Unit 2: Actions",
-                description: "Eating, sleeping, and seeing.",
-                color: "bg-blue-500",
-                exercises: [
-                    {
-                        id: '2-1', type: 'vocab', prompt: 'Which of these means "To Eat"?',
-                        options: [ { text: 'lape', image: '😴' }, { text: 'moku', image: '🍎' }, { text: 'telo', image: '💧' }, { text: 'lukin', image: '👀' } ],
-                        correctAnswer: 'moku', tip: "'moku' means to eat, drink, or food."
-                    },
-                    {
-                        id: '2-2', type: 'translate_tp_en', prompt: 'Translate this sentence',
-                        question: 'ona li lukin', words: ['He', 'looks', 'sleeps', 'is', 'me', 'good'],
-                        correctAnswer: ['He', 'looks'], tip: "We use 'li' because the subject 'ona' is not mi/sina."
-                    }
-                ]
-            }
+        // --- 1. FULL TOKI PONA VOCABULARY DATABASE ---
+        // Grouped for easy learning curves
+        const WORD_DATA = [
+            { id: 'basics', title: "Basics", color: "bg-green-500", words: [
+                { w: "toki", m: "hello, language, speech", e: "💬" },
+                { w: "pona", m: "good, simple, friendly", e: "👍" },
+                { w: "ike", m: "bad, evil, complicated", e: "👎" },
+                { w: "mi", m: "I, me, my", e: "🙋" },
+                { w: "sina", m: "you, your", e: "👉" }
+            ]},
+            { id: 'objects', title: "Objects", color: "bg-blue-500", words: [
+                { w: "ijo", m: "thing, object", e: "📦" },
+                { w: "jo", m: "to have, carry", e: "🎒" },
+                { w: "moku", m: "eat, drink, food", e: "🍎" },
+                { w: "telo", m: "water, liquid", e: "💧" },
+                { w: "kiwen", m: "hard thing, rock, metal", e: "🪨" }
+            ]},
+            { id: 'people', title: "People", color: "bg-purple-500", words: [
+                { w: "jan", m: "person, human", e: "👤" },
+                { w: "mama", m: "parent, creator", e: "🤱" },
+                { w: "meli", m: "woman, female", e: "👩" },
+                { w: "mije", m: "man, male", e: "👨" },
+                { w: "ona", m: "he, she, it, they", e: "👀" }
+            ]},
+            { id: 'nature', title: "Nature", color: "bg-emerald-500", words: [
+                { w: "ma", m: "land, earth, country", e: "🌍" },
+                { w: "kasi", m: "plant, tree, leaf", e: "🌳" },
+                { w: "suno", m: "sun, light", e: "☀️" },
+                { w: "mun", m: "moon, star, night sky", e: "🌙" },
+                { w: "kon", m: "air, wind, spirit", e: "💨" }
+            ]},
+            { id: 'verbs', title: "Actions", color: "bg-red-500", words: [
+                { w: "lape", m: "sleep, rest", e: "😴" },
+                { w: "lukin", m: "see, look, vision", e: "👁️" },
+                { w: "pali", m: "do, work, make", e: "🔨" },
+                { w: "sona", m: "know, understand", e: "🧠" },
+                { w: "kama", m: "come, become", e: "🚶" }
+            ]},
+            { id: 'desc', title: "Description", color: "bg-yellow-500", words: [
+                { w: "suli", m: "big, tall, important", e: "🐘" },
+                { w: "lili", m: "small, little, young", e: "🐜" },
+                { w: "loje", m: "red", e: "🔴" },
+                { w: "laso", m: "blue, green", e: "🔵" },
+                { w: "jelo", m: "yellow", e: "🟡" }
+            ]}
         ];
 
         // --- COMPONENTS ---
-        const Button = ({ children, onClick, variant = 'primary', disabled = false }) => {
-            const variants = {
-                primary: "bg-green-500 border-green-700 text-white active:bg-green-600",
-                danger: "bg-red-500 border-red-700 text-white active:bg-red-600",
-                disabled: "bg-slate-200 border-slate-300 text-slate-400 cursor-not-allowed"
+
+        const NavButton = ({ active, icon: Icon, label, onClick }) => (
+            <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 flex-1 transition-colors ${active ? 'text-green-600' : 'text-slate-400 hover:text-slate-600'}`}>
+                <Icon size={24} strokeWidth={active ? 3 : 2} />
+                <span className="text-xs font-bold uppercase">{label}</span>
+            </button>
+        );
+
+        const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
+            const styles = {
+                primary: "bg-green-500 border-green-700 text-white hover:bg-green-400 active:bg-green-600",
+                secondary: "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
+                danger: "bg-red-500 border-red-700 text-white",
+                outline: "border-2 border-slate-200 text-slate-500"
             };
             return (
                 <button 
-                    onClick={disabled ? undefined : onClick}
-                    className={`w-full font-bold uppercase tracking-wider py-4 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all ${variants[disabled ? 'disabled' : variant]}`}
+                    onClick={onClick} 
+                    className={`w-full font-bold uppercase tracking-wider py-4 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all ${styles[variant]} ${className}`}
                 >
                     {children}
                 </button>
             );
         };
 
-        const ProgressBar = ({ current, total }) => {
-            const progress = Math.min(100, (current / total) * 100);
-            return (
-                <div className="h-4 w-full bg-slate-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-green-500 transition-all duration-500" style={{ width: `${progress}%` }}></div>
-                </div>
-            );
-        };
-
-        const WordBubble = ({ text, onClick, selected, disabled }) => (
-            <button
-                onClick={onClick} disabled={disabled}
-                className={`px-4 py-3 m-1 rounded-xl border-b-4 font-bold text-lg transition-all ${selected ? 'bg-slate-200 border-slate-200 text-slate-200 pointer-events-none' : 'bg-white border-slate-200 text-slate-700 active:border-b-0 active:translate-y-1'}`}
-            >
-                {text}
-            </button>
+        const Card = ({ children, className = '' }) => (
+            <div className={`bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm ${className}`}>
+                {children}
+            </div>
         );
 
-        // --- MAIN APP ---
+        // --- MAIN APP ENGINE ---
+
         function App() {
-            const [screen, setScreen] = useState('path'); 
-            const [currentUnitIndex, setCurrentUnitIndex] = useState(0);
-            const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-            const [hearts, setHearts] = useState(5);
-            const [selectedWords, setSelectedWords] = useState([]);
-            const [lessonStatus, setLessonStatus] = useState('idle');
-            const [shuffledOptions, setShuffledOptions] = useState([]);
-
-            const currentUnit = CURRICULUM[currentUnitIndex];
-            const currentExercise = currentUnit?.exercises[currentExerciseIndex];
-
-            useEffect(() => {
-                if (screen === 'lesson' && currentExercise) {
-                    setSelectedWords([]);
-                    setLessonStatus('idle');
-                    if (currentExercise.type.includes('translate')) {
-                        setShuffledOptions([...currentExercise.words].sort(() => Math.random() - 0.5));
-                    }
-                }
-            }, [currentExerciseIndex, screen]);
-
-            const handleWordClick = (word) => { if (lessonStatus === 'idle') setSelectedWords([...selectedWords, word]); };
-            const handleRemoveWord = (idx) => { if (lessonStatus === 'idle') setSelectedWords(selectedWords.filter((_, i) => i !== idx)); };
+            // State
+            const [view, setView] = useState('map'); // map, lesson, dict, summary
+            const [activeUnitId, setActiveUnitId] = useState(null);
+            const [learnedWords, setLearnedWords] = useState([]); // List of word strings
             
-            const checkAnswer = () => {
-                let isCorrect = false;
-                if (currentExercise.type === 'vocab') isCorrect = selectedWords[0] === currentExercise.correctAnswer;
-                else isCorrect = selectedWords.join(' ') === currentExercise.correctAnswer.join(' ');
+            // Lesson State
+            const [lessonQueue, setLessonQueue] = useState([]);
+            const [currentCardIndex, setCurrentCardIndex] = useState(0);
+            const [hearts, setHearts] = useState(5);
+            const [lessonStatus, setLessonStatus] = useState('idle'); // idle, correct, wrong
+            const [selectedOption, setSelectedOption] = useState(null);
 
-                if (isCorrect) setLessonStatus('correct');
-                else {
+            // --- LESSON GENERATOR ---
+            const startLesson = (unitId) => {
+                const unit = WORD_DATA.find(u => u.id === unitId);
+                const newQueue = [];
+                
+                // 1. TEACHING PHASE: Add "Intro" cards for words not yet learned
+                unit.words.forEach(word => {
+                    if (!learnedWords.includes(word.w)) {
+                        newQueue.push({ type: 'learn', word: word });
+                    }
+                });
+
+                // 2. TESTING PHASE: Generate questions
+                // Simple Vocab Match
+                unit.words.forEach(word => {
+                    // Create distractors (wrong answers)
+                    const distractors = unit.words
+                        .filter(w => w.w !== word.w)
+                        .sort(() => 0.5 - Math.random())
+                        .slice(0, 3);
+                    
+                    const options = [word, ...distractors].sort(() => 0.5 - Math.random());
+                    
+                    newQueue.push({
+                        type: 'vocab',
+                        prompt: `Which one is "${word.m}"?`,
+                        correct: word.w,
+                        options: options
+                    });
+                });
+
+                setLessonQueue(newQueue);
+                setCurrentCardIndex(0);
+                setActiveUnitId(unitId);
+                setHearts(5);
+                setLessonStatus('idle');
+                setView('lesson');
+            };
+
+            const handleCheck = () => {
+                const card = lessonQueue[currentCardIndex];
+                
+                if (card.type === 'learn') {
+                    // Learning cards are always "correct" when you click continue
+                    setLessonStatus('correct'); 
+                    return;
+                }
+
+                if (selectedOption === card.correct) {
+                    setLessonStatus('correct');
+                    // Play sweet sound here
+                } else {
                     setLessonStatus('wrong');
                     setHearts(h => Math.max(0, h - 1));
                 }
             };
 
-            const next = () => {
-                if (currentExerciseIndex < currentUnit.exercises.length - 1) {
-                    setCurrentExerciseIndex(p => p + 1);
+            const handleNext = () => {
+                // If we just finished a 'learn' card, add to learnedWords
+                const currentCard = lessonQueue[currentCardIndex];
+                if (currentCard.type === 'learn') {
+                    if (!learnedWords.includes(currentCard.word.w)) {
+                        setLearnedWords(prev => [...prev, currentCard.word.w]);
+                    }
+                }
+
+                if (currentCardIndex < lessonQueue.length - 1) {
+                    setCurrentCardIndex(p => p + 1);
                     setLessonStatus('idle');
-                    setSelectedWords([]);
-                } else setScreen('summary');
+                    setSelectedOption(null);
+                } else {
+                    setView('summary');
+                }
             };
 
-            // SCREEN: PATH
-            if (screen === 'path') return (
-                <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col items-center border-x border-slate-100">
-                    <div className="w-full p-4 flex justify-between border-b sticky top-0 bg-white z-10">
-                        <span className="text-2xl">🦉</span>
-                        <div className="flex gap-4 font-bold">
-                            <span className="text-red-500">❤️ {hearts}</span>
-                            <span className="text-orange-500">🔥 12</span>
+            // --- VIEWS ---
+
+            // 1. DICTIONARY VIEW
+            if (view === 'dict') {
+                return (
+                    <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col pb-24">
+                        <div className="p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
+                            <h1 className="text-2xl font-extrabold text-slate-700">Dictionary</h1>
+                            <p className="text-slate-400">Words learned: {learnedWords.length} / {WORD_DATA.reduce((acc, u) => acc + u.words.length, 0)}</p>
+                        </div>
+                        <div className="p-4 grid gap-4">
+                            {WORD_DATA.map(group => (
+                                <div key={group.id}>
+                                    <h3 className="font-bold text-slate-400 uppercase text-sm mb-2 ml-2">{group.title}</h3>
+                                    <div className="grid gap-2">
+                                        {group.words.map(word => {
+                                            const isUnlocked = learnedWords.includes(word.w);
+                                            return (
+                                                <div key={word.w} className={`flex items-center gap-4 p-4 rounded-2xl border-2 ${isUnlocked ? 'border-slate-100 bg-white' : 'border-slate-50 bg-slate-50 opacity-60'}`}>
+                                                    <div className="text-3xl">{isUnlocked ? word.e : '🔒'}</div>
+                                                    <div>
+                                                        <div className="font-bold text-lg text-slate-700">{word.w}</div>
+                                                        <div className="text-slate-500">{isUnlocked ? word.m : '???'}</div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Bottom Nav */}
+                        <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-slate-100 p-2 flex justify-around">
+                            <NavButton icon={Map} label="Learn" onClick={() => setView('map')} />
+                            <NavButton active icon={Book} label="Words" onClick={() => setView('dict')} />
                         </div>
                     </div>
-                    <div className="p-8 w-full flex flex-col gap-8 items-center">
-                        {CURRICULUM.map((unit, idx) => (
-                            <div key={unit.id} className="flex flex-col items-center">
-                                <button onClick={() => { setCurrentUnitIndex(idx); setCurrentExerciseIndex(0); setScreen('lesson'); }} 
-                                    className={`w-20 h-20 rounded-full ${unit.color} border-b-8 border-black/20 flex items-center justify-center text-white text-3xl shadow-xl active:border-b-0 active:translate-y-2`}>
-                                    ★
-                                </button>
-                                <span className="font-bold text-slate-700 mt-2">{unit.title}</span>
+                );
+            }
+
+            // 2. LESSON VIEW
+            if (view === 'lesson') {
+                const card = lessonQueue[currentCardIndex];
+                
+                // TEACH MODE CARD
+                if (card.type === 'learn') {
+                    return (
+                        <div className="max-w-md mx-auto min-h-screen bg-green-500 flex flex-col items-center justify-center p-8 text-white relative">
+                            <div className="animate-in slide-in w-full max-w-sm">
+                                <h2 className="text-center font-bold text-green-100 mb-8 uppercase tracking-widest">New Word!</h2>
+                                <div className="bg-white text-slate-800 rounded-3xl p-8 flex flex-col items-center gap-6 shadow-2xl">
+                                    <div className="text-8xl mb-2">{card.word.e}</div>
+                                    <div className="text-center">
+                                        <h1 className="text-5xl font-black text-slate-700 mb-2">{card.word.w}</h1>
+                                        <p className="text-xl text-slate-500 font-medium">{card.word.m}</p>
+                                    </div>
+                                    <div className="w-full h-1 bg-slate-100 rounded-full my-2"></div>
+                                    <Button onClick={handleNext}>I got it!</Button>
+                                </div>
                             </div>
-                        ))}
-                    </div>
-                </div>
-            );
+                        </div>
+                    );
+                }
 
-            // SCREEN: SUMMARY
-            if (screen === 'summary') return (
-                <div className="min-h-screen bg-yellow-400 flex flex-col items-center justify-center p-6 text-center">
-                    <div className="text-8xl mb-4">🏆</div>
-                    <h1 className="text-3xl font-extrabold text-yellow-800 mb-8">Unit Complete!</h1>
-                    <Button onClick={() => setScreen('path')} variant="primary" className="bg-yellow-600 border-yellow-800">Continue</Button>
-                </div>
-            );
+                // QUIZ MODE CARD
+                return (
+                    <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col">
+                        {/* Header */}
+                        <div className="p-4 flex items-center gap-4">
+                            <X className="text-slate-300 cursor-pointer" onClick={() => setView('map')} />
+                            <div className="h-3 flex-1 bg-slate-100 rounded-full overflow-hidden">
+                                <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${((currentCardIndex + 1) / lessonQueue.length) * 100}%` }}></div>
+                            </div>
+                            <div className="flex items-center gap-1 text-red-500 font-bold"><div className="fill-current">❤️</div> {hearts}</div>
+                        </div>
 
-            // SCREEN: LESSON
-            return (
-                <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col">
-                    <div className="p-4 flex items-center gap-4">
-                        <span onClick={() => setScreen('path')} className="text-2xl cursor-pointer">✕</span>
-                        <ProgressBar current={currentExerciseIndex} total={currentUnit.exercises.length} />
-                        <span className="text-red-500 font-bold">❤️ {hearts}</span>
-                    </div>
-
-                    <div className="flex-1 p-4 pb-32 overflow-y-auto">
-                        <h2 className="text-2xl font-bold text-slate-700 mb-8">{currentExercise.prompt}</h2>
-
-                        {/* VOCAB TYPE */}
-                        {currentExercise.type === 'vocab' && (
+                        {/* Content */}
+                        <div className="flex-1 p-6 flex flex-col">
+                            <h2 className="text-2xl font-bold text-slate-700 mb-8">{card.prompt}</h2>
                             <div className="grid grid-cols-2 gap-4">
-                                {currentExercise.options.map(opt => (
-                                    <button key={opt.text} onClick={() => lessonStatus === 'idle' && setSelectedWords([opt.text])}
-                                        className={`p-4 rounded-xl border-2 border-b-4 flex flex-col items-center gap-2 ${selectedWords.includes(opt.text) ? 'border-blue-400 bg-blue-50' : 'border-slate-200'}`}>
-                                        <span className="text-4xl">{opt.image}</span>
-                                        <span className="font-bold text-lg text-slate-700">{opt.text}</span>
+                                {card.options.map(opt => (
+                                    <button 
+                                        key={opt.w}
+                                        onClick={() => lessonStatus === 'idle' && setSelectedOption(opt.w)}
+                                        className={`
+                                            p-6 rounded-2xl border-2 border-b-4 flex flex-col items-center gap-2 transition-all
+                                            ${selectedOption === opt.w ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}
+                                            ${lessonStatus === 'correct' && opt.w === card.correct ? 'bg-green-100 border-green-500' : ''}
+                                            ${lessonStatus === 'wrong' && selectedOption === opt.w ? 'bg-red-100 border-red-500' : ''}
+                                        `}
+                                    >
+                                        <span className="text-5xl mb-2">{opt.e}</span>
+                                        <span className="font-bold text-lg text-slate-600">{opt.w}</span>
                                     </button>
                                 ))}
                             </div>
-                        )}
+                        </div>
 
-                        {/* TRANSLATE TYPE */}
-                        {currentExercise.type.includes('translate') && (
-                            <div className="flex flex-col gap-6">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-blue-500 rounded-xl text-white">🔊</div>
-                                    <p className="text-xl text-slate-600 font-medium">{currentExercise.question}</p>
+                        {/* Footer Feedback */}
+                        <div className={`border-t-2 p-6 pb-8 ${lessonStatus === 'idle' ? 'bg-white' : lessonStatus === 'correct' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'}`}>
+                            {lessonStatus !== 'idle' && (
+                                <div className="mb-4 flex gap-4 items-center animate-in slide-in">
+                                    <div className={`p-2 rounded-full ${lessonStatus === 'correct' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
+                                        {lessonStatus === 'correct' ? <Check /> : <X />}
+                                    </div>
+                                    <div className="font-bold text-xl text-slate-700">
+                                        {lessonStatus === 'correct' ? 'Excellent!' : `Answer: ${card.correct}`}
+                                    </div>
                                 </div>
-                                <div className="min-h-[80px] border-t-2 border-b-2 border-slate-100 py-4 flex flex-wrap gap-2">
-                                    {selectedWords.map((w, i) => (
-                                        <button key={i} onClick={() => handleRemoveWord(i)} className="px-4 py-3 rounded-xl border-b-4 bg-white border-slate-200 text-slate-700 font-bold text-lg">{w}</button>
-                                    ))}
-                                </div>
-                                <div className="flex flex-wrap justify-center">
-                                    {shuffledOptions.map((w, i) => (
-                                        <WordBubble key={i} text={w} onClick={() => handleWordClick(w)} selected={selectedWords.includes(w) && !shuffledOptions.filter(wd=>wd===w).slice(selectedWords.filter(s=>s===w).length).length} disabled={false} />
-                                    ))}
-                                </div>
-                            </div>
-                        )}
+                            )}
+                            <Button 
+                                onClick={lessonStatus === 'idle' ? handleCheck : (hearts > 0 ? handleNext : () => setView('map'))}
+                                variant={lessonStatus === 'wrong' ? 'danger' : 'primary'}
+                                disabled={lessonStatus === 'idle' && !selectedOption}
+                            >
+                                {lessonStatus === 'idle' ? 'Check' : hearts > 0 ? 'Continue' : 'Quit'}
+                            </Button>
+                        </div>
+                    </div>
+                );
+            }
+
+            // 3. SUMMARY VIEW
+            if (view === 'summary') {
+                return (
+                    <div className="min-h-screen bg-yellow-400 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
+                        <div className="text-8xl mb-4 animate-bounce">🏆</div>
+                        <h1 className="text-4xl font-extrabold text-yellow-800 mb-8">Unit Complete!</h1>
+                        <div className="bg-white/20 p-6 rounded-2xl w-full mb-8 backdrop-blur-sm">
+                            <p className="text-yellow-900 font-bold">You are learning fast!</p>
+                        </div>
+                        <Button onClick={() => setView('map')} className="bg-yellow-600 border-yellow-800 text-white">Continue</Button>
+                    </div>
+                );
+            }
+
+            // 4. MAP VIEW (Home)
+            return (
+                <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col pb-24 border-x border-slate-50">
+                    {/* Top Bar */}
+                    <div className="p-4 flex justify-between items-center border-b border-slate-100 bg-white sticky top-0 z-10">
+                        <div className="flex gap-2">
+                             <div className="bg-slate-100 p-2 rounded-xl">🇹🇰</div>
+                        </div>
+                        <div className="flex gap-4 font-bold">
+                            <span className="text-red-500 flex items-center gap-1">❤️ {hearts}</span>
+                            <span className="text-orange-500 flex items-center gap-1">🔥 1</span>
+                        </div>
                     </div>
 
-                    {/* FOOTER */}
-                    <div className={`border-t-2 p-4 pb-8 ${lessonStatus === 'correct' ? 'bg-green-100' : lessonStatus === 'wrong' ? 'bg-red-100' : 'bg-white'}`}>
-                        {lessonStatus !== 'idle' && (
-                            <div className="mb-4">
-                                <h3 className={`font-bold text-xl ${lessonStatus === 'correct' ? 'text-green-700' : 'text-red-700'}`}>
-                                    {lessonStatus === 'correct' ? 'Excellent!' : 'Correct solution:'}
-                                </h3>
-                                {lessonStatus === 'wrong' && <p className="text-red-600 mb-2">{Array.isArray(currentExercise.correctAnswer) ? currentExercise.correctAnswer.join(' ') : currentExercise.correctAnswer}</p>}
-                                <div className="text-sm bg-white/50 p-2 rounded text-slate-600"><strong>TIP:</strong> {currentExercise.tip}</div>
-                            </div>
-                        )}
-                        {lessonStatus === 'idle' 
-                            ? <Button onClick={checkAnswer} disabled={selectedWords.length === 0}>Check</Button>
-                            : <Button onClick={hearts > 0 ? next : () => { setHearts(5); setScreen('path'); }} variant={lessonStatus === 'correct' ? 'primary' : 'danger'}>{hearts > 0 ? 'Continue' : 'Retry'}</Button>
-                        }
+                    {/* The Path */}
+                    <div className="flex-1 p-8 flex flex-col items-center gap-8">
+                        {WORD_DATA.map((unit, idx) => {
+                            // Calculate unit progress
+                            const unitWordCount = unit.words.length;
+                            const learnedCount = unit.words.filter(w => learnedWords.includes(w.w)).length;
+                            const isCompleted = learnedCount === unitWordCount;
+                            const isLocked = idx > 0 && !WORD_DATA[idx-1].words.every(w => learnedWords.includes(w.w));
+                            
+                            return (
+                                <div key={unit.id} className="relative flex flex-col items-center z-0">
+                                    {/* Connecting Line */}
+                                    {idx < WORD_DATA.length - 1 && <div className="absolute h-24 w-3 bg-slate-200 -z-10 top-16 rounded-full" />}
+                                    
+                                    <button 
+                                        onClick={() => !isLocked && startLesson(unit.id)}
+                                        className={`
+                                            w-24 h-24 rounded-full border-b-8 flex items-center justify-center shadow-xl transition-transform active:translate-y-2 active:border-b-0
+                                            ${isLocked 
+                                                ? 'bg-slate-200 border-slate-300 text-slate-400' 
+                                                : isCompleted 
+                                                    ? 'bg-yellow-400 border-yellow-600 text-white'
+                                                    : `${unit.color} border-black/20 text-white hover:scale-105`
+                                            }
+                                        `}
+                                    >
+                                        {isLocked ? <Lock size={32} /> : isCompleted ? <Check size={40} strokeWidth={4} /> : <Star size={40} fill="currentColor" />}
+                                    </button>
+                                    
+                                    <div className="mt-3 text-center">
+                                        <h3 className="font-bold text-slate-700 text-lg">{unit.title}</h3>
+                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{learnedCount}/{unitWordCount} Words</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* Bottom Nav */}
+                    <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-slate-100 p-2 flex justify-around">
+                        <NavButton active icon={Map} label="Learn" onClick={() => setView('map')} />
+                        <NavButton icon={Book} label="Words" onClick={() => setView('dict')} />
                     </div>
                 </div>
             );
@@ -253,4 +400,3 @@
     </script>
 </body>
 </html>
- 
