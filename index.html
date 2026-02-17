@@ -9,394 +9,636 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800;900&family=Sora:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap');
-        body { font-family: 'Nunito', sans-serif; background-color: #f8fafc; touch-action: manipulation; }
-        .slide-in { animation: slideUp 0.3s ease-out forwards; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        
-        /* Hide scrollbar for clean UI */
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        :root {
+            --green: #22c55e;
+            --green-dark: #16a34a;
+            --green-glow: rgba(34,197,94,0.25);
+            --ink: #0f1117;
+            --paper: #f8f7f3;
+            --muted: #9ca3af;
+            --card-border: #e8e4dc;
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Sora', sans-serif;
+            background-color: var(--paper);
+            color: var(--ink);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* ── Animations ─────────────────── */
+        @keyframes slideUp   { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+        @keyframes pop       { 0%,100% { transform:scale(1); } 50% { transform:scale(1.12); } }
+        @keyframes shake     { 0%,100% { transform:translateX(0); } 20%,60% { transform:translateX(-8px); } 40%,80% { transform:translateX(8px); } }
+        @keyframes pulse-dot { 0%,100% { opacity:1; } 50% { opacity:.4; } }
+        @keyframes confetti  { 0% { transform:translateY(0) rotate(0deg); opacity:1; } 100% { transform:translateY(-60px) rotate(360deg); opacity:0; } }
+
+        .slide-up  { animation: slideUp .35s cubic-bezier(.22,1,.36,1) forwards; }
+        .pop       { animation: pop .3s ease; }
+        .shake     { animation: shake .4s ease; }
+
+        /* ── Progress bar ───────────────── */
+        .progress-bar { height: 8px; background: var(--card-border); border-radius: 99px; overflow:hidden; }
+        .progress-fill { height:100%; background: var(--green); border-radius:99px; transition: width .4s cubic-bezier(.22,1,.36,1); }
+
+        /* ── Quiz option cards ───────────── */
+        .opt-btn {
+            position: relative;
+            border: 2.5px solid var(--card-border);
+            border-radius: 20px;
+            padding: 20px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: border-color .15s, background .15s, transform .1s;
+            background: white;
+            user-select: none;
+        }
+        .opt-btn:active { transform: scale(.97); }
+        .opt-btn.selected { border-color: #3b82f6; background: #eff6ff; }
+        .opt-btn.correct  { border-color: var(--green); background: #f0fdf4; }
+        .opt-btn.wrong    { border-color: #ef4444; background: #fef2f2; }
+
+        /* ── Unit node ───────────────────── */
+        .unit-node {
+            width: 88px; height: 88px;
+            border-radius: 50%;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            display: flex; align-items:center; justify-content:center;
+            font-size: 2rem;
+            box-shadow: 0 8px 0 rgba(0,0,0,.15), 0 2px 16px rgba(0,0,0,.08);
+            transition: transform .15s, box-shadow .15s;
+            position: relative;
+        }
+        .unit-node:not(.locked):active { transform:translateY(6px); box-shadow:0 2px 0 rgba(0,0,0,.15); }
+        .unit-node.locked { cursor: default; opacity: .55; }
+
+        /* ── Bottom nav ─────────────────── */
+        .bottom-nav {
+            position: fixed; bottom: 0;
+            display: flex;
+            background: white;
+            border-top: 2px solid var(--card-border);
+        }
+        .nav-btn {
+            flex: 1;
+            display: flex; flex-direction:column; align-items:center;
+            gap: 4px; padding: 10px 0 12px;
+            font-family: 'Syne', sans-serif;
+            font-size: 10px; font-weight: 800;
+            letter-spacing: .08em; text-transform: uppercase;
+            color: var(--muted); border: none; background: none; cursor: pointer;
+            transition: color .15s;
+        }
+        .nav-btn.active { color: var(--green); }
+        .nav-btn svg { transition: transform .2s; }
+        .nav-btn.active svg { transform: scale(1.15); }
+
+        /* ── Cards ───────────────────────── */
+        .card {
+            background: white;
+            border: 2px solid var(--card-border);
+            border-radius: 24px;
+            padding: 20px;
+        }
+
+        /* ── Teach card ──────────────────── */
+        .teach-card {
+            background: white;
+            border-radius: 32px;
+            padding: 36px 28px;
+            display: flex; flex-direction:column; align-items:center;
+            gap: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.12);
+        }
+
+        /* ── Buttons ─────────────────────── */
+        .btn {
+            width: 100%;
+            padding: 16px;
+            border-radius: 16px;
+            font-family: 'Syne', sans-serif;
+            font-size: 15px; font-weight: 800;
+            letter-spacing: .06em; text-transform: uppercase;
+            border: none; cursor: pointer;
+            transition: filter .15s, transform .1s;
+        }
+        .btn:active { filter: brightness(.92); transform: scale(.98); }
+        .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+        .btn-primary { background: var(--green); color: white; }
+        .btn-danger  { background: #ef4444; color: white; }
+        .btn-white   { background: white; color: var(--ink); border: 2px solid var(--card-border); }
+
+        /* ── Scrollbar ───────────────────── */
+        .no-scroll::-webkit-scrollbar { display: none; }
+        .no-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* ── Hearts ─────────────────────── */
+        .heart { display:inline-block; font-size:1.1rem; line-height:1; transition: transform .2s; }
+        .heart.lost { opacity: .2; filter: grayscale(1); transform: scale(.85); }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo } = React;
-        const { Book, Map, Volume2, Star, Check, X, Lock } = lucide;
+        const { useState, useEffect, useRef, useCallback } = React;
 
-        // --- 1. FULL TOKI PONA VOCABULARY DATABASE ---
-        // Grouped for easy learning curves
+        // ─────────────────────────────────────────────────────────
+        //  DATA
+        // ─────────────────────────────────────────────────────────
         const WORD_DATA = [
-            { id: 'basics', title: "Basics", color: "bg-green-500", words: [
-                { w: "toki", m: "hello, language, speech", e: "💬" },
-                { w: "pona", m: "good, simple, friendly", e: "👍" },
-                { w: "ike", m: "bad, evil, complicated", e: "👎" },
-                { w: "mi", m: "I, me, my", e: "🙋" },
-                { w: "sina", m: "you, your", e: "👉" }
+            { id: 'basics', title: "Basics", bg: "#22c55e", shadow: "#15803d", words: [
+                { w: "toki",  m: "hello, language, speech",     e: "💬" },
+                { w: "pona",  m: "good, simple, friendly",      e: "👍" },
+                { w: "ike",   m: "bad, evil, complicated",      e: "👎" },
+                { w: "mi",    m: "I, me, my",                   e: "🙋" },
+                { w: "sina",  m: "you, your",                   e: "👉" },
             ]},
-            { id: 'objects', title: "Objects", color: "bg-blue-500", words: [
-                { w: "ijo", m: "thing, object", e: "📦" },
-                { w: "jo", m: "to have, carry", e: "🎒" },
-                { w: "moku", m: "eat, drink, food", e: "🍎" },
-                { w: "telo", m: "water, liquid", e: "💧" },
-                { w: "kiwen", m: "hard thing, rock, metal", e: "🪨" }
+            { id: 'objects', title: "Objects", bg: "#3b82f6", shadow: "#1d4ed8", words: [
+                { w: "ijo",   m: "thing, object",               e: "📦" },
+                { w: "jo",    m: "to have, carry",              e: "🎒" },
+                { w: "moku",  m: "eat, drink, food",            e: "🍎" },
+                { w: "telo",  m: "water, liquid",               e: "💧" },
+                { w: "kiwen", m: "hard thing, rock, metal",     e: "🪨" },
             ]},
-            { id: 'people', title: "People", color: "bg-purple-500", words: [
-                { w: "jan", m: "person, human", e: "👤" },
-                { w: "mama", m: "parent, creator", e: "🤱" },
-                { w: "meli", m: "woman, female", e: "👩" },
-                { w: "mije", m: "man, male", e: "👨" },
-                { w: "ona", m: "he, she, it, they", e: "👀" }
+            { id: 'people', title: "People", bg: "#a855f7", shadow: "#7e22ce", words: [
+                { w: "jan",   m: "person, human",               e: "👤" },
+                { w: "mama",  m: "parent, creator",             e: "🤱" },
+                { w: "meli",  m: "woman, female",               e: "👩" },
+                { w: "mije",  m: "man, male",                   e: "👨" },
+                { w: "ona",   m: "he, she, it, they",           e: "👀" },
             ]},
-            { id: 'nature', title: "Nature", color: "bg-emerald-500", words: [
-                { w: "ma", m: "land, earth, country", e: "🌍" },
-                { w: "kasi", m: "plant, tree, leaf", e: "🌳" },
-                { w: "suno", m: "sun, light", e: "☀️" },
-                { w: "mun", m: "moon, star, night sky", e: "🌙" },
-                { w: "kon", m: "air, wind, spirit", e: "💨" }
+            { id: 'nature', title: "Nature", bg: "#10b981", shadow: "#065f46", words: [
+                { w: "ma",    m: "land, earth, country",        e: "🌍" },
+                { w: "kasi",  m: "plant, tree, leaf",           e: "🌳" },
+                { w: "suno",  m: "sun, light",                  e: "☀️"  },
+                { w: "mun",   m: "moon, star, night sky",       e: "🌙" },
+                { w: "kon",   m: "air, wind, spirit",           e: "💨" },
             ]},
-            { id: 'verbs', title: "Actions", color: "bg-red-500", words: [
-                { w: "lape", m: "sleep, rest", e: "😴" },
-                { w: "lukin", m: "see, look, vision", e: "👁️" },
-                { w: "pali", m: "do, work, make", e: "🔨" },
-                { w: "sona", m: "know, understand", e: "🧠" },
-                { w: "kama", m: "come, become", e: "🚶" }
+            { id: 'verbs', title: "Actions", bg: "#f97316", shadow: "#c2410c", words: [
+                { w: "lape",  m: "sleep, rest",                 e: "😴" },
+                { w: "lukin", m: "see, look, vision",           e: "👁️"  },
+                { w: "pali",  m: "do, work, make",              e: "🔨" },
+                { w: "sona",  m: "know, understand",            e: "🧠" },
+                { w: "kama",  m: "come, become",                e: "🚶" },
             ]},
-            { id: 'desc', title: "Description", color: "bg-yellow-500", words: [
-                { w: "suli", m: "big, tall, important", e: "🐘" },
-                { w: "lili", m: "small, little, young", e: "🐜" },
-                { w: "loje", m: "red", e: "🔴" },
-                { w: "laso", m: "blue, green", e: "🔵" },
-                { w: "jelo", m: "yellow", e: "🟡" }
-            ]}
+            { id: 'desc', title: "Descriptors", bg: "#eab308", shadow: "#854d0e", words: [
+                { w: "suli",  m: "big, tall, important",        e: "🐘" },
+                { w: "lili",  m: "small, little, young",        e: "🐜" },
+                { w: "loje",  m: "red",                         e: "🔴" },
+                { w: "laso",  m: "blue, green",                 e: "🔵" },
+                { w: "jelo",  m: "yellow",                      e: "🟡" },
+            ]},
         ];
 
-        // --- COMPONENTS ---
+        const TOTAL_WORDS = WORD_DATA.reduce((a, u) => a + u.words.length, 0);
 
-        const NavButton = ({ active, icon: Icon, label, onClick }) => (
-            <button onClick={onClick} className={`flex flex-col items-center gap-1 p-2 flex-1 transition-colors ${active ? 'text-green-600' : 'text-slate-400 hover:text-slate-600'}`}>
-                <Icon size={24} strokeWidth={active ? 3 : 2} />
-                <span className="text-xs font-bold uppercase">{label}</span>
-            </button>
-        );
+        // ─────────────────────────────────────────────────────────
+        //  HELPERS
+        // ─────────────────────────────────────────────────────────
+        const shuffle = arr => [...arr].sort(() => Math.random() - .5);
 
-        const Button = ({ children, onClick, variant = 'primary', className = '' }) => {
-            const styles = {
-                primary: "bg-green-500 border-green-700 text-white hover:bg-green-400 active:bg-green-600",
-                secondary: "bg-white border-slate-200 text-slate-700 hover:bg-slate-50",
-                danger: "bg-red-500 border-red-700 text-white",
-                outline: "border-2 border-slate-200 text-slate-500"
-            };
+        function buildLessonQueue(unit, learnedWords) {
+            const queue = [];
+            // Teach new words first
+            unit.words.forEach(word => {
+                if (!learnedWords.includes(word.w)) {
+                    queue.push({ type: 'learn', word });
+                }
+            });
+            // Quiz every word with 3 distractors
+            unit.words.forEach(word => {
+                const distractors = shuffle(unit.words.filter(w => w.w !== word.w)).slice(0, 3);
+                queue.push({
+                    type: 'vocab',
+                    prompt: `Which word means:`,
+                    meaning: word.m,
+                    emoji: word.e,
+                    correct: word.w,
+                    options: shuffle([word, ...distractors]),
+                });
+            });
+            return queue;
+        }
+
+        // ─────────────────────────────────────────────────────────
+        //  SMALL COMPONENTS
+        // ─────────────────────────────────────────────────────────
+
+        function Hearts({ total = 5, remaining }) {
             return (
-                <button 
-                    onClick={onClick} 
-                    className={`w-full font-bold uppercase tracking-wider py-4 rounded-2xl border-b-4 active:border-b-0 active:translate-y-1 transition-all ${styles[variant]} ${className}`}
-                >
-                    {children}
-                </button>
+                <div style={{ display:'flex', gap:4 }}>
+                    {Array.from({ length: total }).map((_, i) => (
+                        <span key={i} className={`heart ${i >= remaining ? 'lost' : ''}`}>❤️</span>
+                    ))}
+                </div>
             );
-        };
+        }
 
-        const Card = ({ children, className = '' }) => (
-            <div className={`bg-white border-2 border-slate-100 rounded-3xl p-6 shadow-sm ${className}`}>
-                {children}
-            </div>
-        );
+        function BottomNav({ active, setView }) {
+            return (
+                <nav className="bottom-nav" style={{ width:'100%', maxWidth:480, left:'50%', transform:'translateX(-50%)' }}>
+                    <button className={`nav-btn ${active === 'map' ? 'active' : ''}`} onClick={() => setView('map')}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/>
+                            <line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
+                        </svg>
+                        Learn
+                    </button>
+                    <button className={`nav-btn ${active === 'dict' ? 'active' : ''}`} onClick={() => setView('dict')}>
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+                        </svg>
+                        Dictionary
+                    </button>
+                </nav>
+            );
+        }
 
-        // --- MAIN APP ENGINE ---
+        // ─────────────────────────────────────────────────────────
+        //  VIEWS
+        // ─────────────────────────────────────────────────────────
 
-        function App() {
-            // State
-            const [view, setView] = useState('map'); // map, lesson, dict, summary
-            const [activeUnitId, setActiveUnitId] = useState(null);
-            const [learnedWords, setLearnedWords] = useState([]); // List of word strings
-            
-            // Lesson State
-            const [lessonQueue, setLessonQueue] = useState([]);
-            const [currentCardIndex, setCurrentCardIndex] = useState(0);
-            const [hearts, setHearts] = useState(5);
-            const [lessonStatus, setLessonStatus] = useState('idle'); // idle, correct, wrong
-            const [selectedOption, setSelectedOption] = useState(null);
+        function MapView({ learnedWords, startLesson }) {
+            const [streaks] = useState(1); // placeholder streak
 
-            // --- LESSON GENERATOR ---
-            const startLesson = (unitId) => {
-                const unit = WORD_DATA.find(u => u.id === unitId);
-                const newQueue = [];
-                
-                // 1. TEACHING PHASE: Add "Intro" cards for words not yet learned
-                unit.words.forEach(word => {
-                    if (!learnedWords.includes(word.w)) {
-                        newQueue.push({ type: 'learn', word: word });
-                    }
-                });
-
-                // 2. TESTING PHASE: Generate questions
-                // Simple Vocab Match
-                unit.words.forEach(word => {
-                    // Create distractors (wrong answers)
-                    const distractors = unit.words
-                        .filter(w => w.w !== word.w)
-                        .sort(() => 0.5 - Math.random())
-                        .slice(0, 3);
-                    
-                    const options = [word, ...distractors].sort(() => 0.5 - Math.random());
-                    
-                    newQueue.push({
-                        type: 'vocab',
-                        prompt: `Which one is "${word.m}"?`,
-                        correct: word.w,
-                        options: options
-                    });
-                });
-
-                setLessonQueue(newQueue);
-                setCurrentCardIndex(0);
-                setActiveUnitId(unitId);
-                setHearts(5);
-                setLessonStatus('idle');
-                setView('lesson');
-            };
-
-            const handleCheck = () => {
-                const card = lessonQueue[currentCardIndex];
-                
-                if (card.type === 'learn') {
-                    // Learning cards are always "correct" when you click continue
-                    setLessonStatus('correct'); 
-                    return;
-                }
-
-                if (selectedOption === card.correct) {
-                    setLessonStatus('correct');
-                    // Play sweet sound here
-                } else {
-                    setLessonStatus('wrong');
-                    setHearts(h => Math.max(0, h - 1));
-                }
-            };
-
-            const handleNext = () => {
-                // If we just finished a 'learn' card, add to learnedWords
-                const currentCard = lessonQueue[currentCardIndex];
-                if (currentCard.type === 'learn') {
-                    if (!learnedWords.includes(currentCard.word.w)) {
-                        setLearnedWords(prev => [...prev, currentCard.word.w]);
-                    }
-                }
-
-                if (currentCardIndex < lessonQueue.length - 1) {
-                    setCurrentCardIndex(p => p + 1);
-                    setLessonStatus('idle');
-                    setSelectedOption(null);
-                } else {
-                    setView('summary');
-                }
-            };
-
-            // --- VIEWS ---
-
-            // 1. DICTIONARY VIEW
-            if (view === 'dict') {
-                return (
-                    <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col pb-24">
-                        <div className="p-6 border-b border-slate-100 bg-white sticky top-0 z-10">
-                            <h1 className="text-2xl font-extrabold text-slate-700">Dictionary</h1>
-                            <p className="text-slate-400">Words learned: {learnedWords.length} / {WORD_DATA.reduce((acc, u) => acc + u.words.length, 0)}</p>
+            return (
+                <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100dvh', background:'var(--paper)', display:'flex', flexDirection:'column', paddingBottom:80 }}>
+                    {/* Header */}
+                    <div style={{ padding:'20px 20px 16px', background:'white', borderBottom:'2px solid var(--card-border)', position:'sticky', top:0, zIndex:10, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                        <div>
+                            <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:22, letterSpacing:'-0.03em', color:'var(--ink)' }}>toki pona</div>
+                            <div style={{ fontSize:12, color:'var(--muted)', fontWeight:500 }}>{learnedWords.length}/{TOTAL_WORDS} words learned</div>
                         </div>
-                        <div className="p-4 grid gap-4">
-                            {WORD_DATA.map(group => (
-                                <div key={group.id}>
-                                    <h3 className="font-bold text-slate-400 uppercase text-sm mb-2 ml-2">{group.title}</h3>
-                                    <div className="grid gap-2">
-                                        {group.words.map(word => {
-                                            const isUnlocked = learnedWords.includes(word.w);
-                                            return (
-                                                <div key={word.w} className={`flex items-center gap-4 p-4 rounded-2xl border-2 ${isUnlocked ? 'border-slate-100 bg-white' : 'border-slate-50 bg-slate-50 opacity-60'}`}>
-                                                    <div className="text-3xl">{isUnlocked ? word.e : '🔒'}</div>
-                                                    <div>
-                                                        <div className="font-bold text-lg text-slate-700">{word.w}</div>
-                                                        <div className="text-slate-500">{isUnlocked ? word.m : '???'}</div>
+                        <div style={{ display:'flex', gap:16, fontFamily:'Syne', fontWeight:800, fontSize:14 }}>
+                            <span style={{ color:'#ef4444' }}>❤️ 5</span>
+                            <span style={{ color:'#f97316' }}>🔥 {streaks}</span>
+                        </div>
+                    </div>
+
+                    {/* Units path */}
+                    <div style={{ flex:1, padding:'32px 24px', display:'flex', flexDirection:'column', alignItems:'center', gap:0 }}>
+                        {WORD_DATA.map((unit, idx) => {
+                            const learned = unit.words.filter(w => learnedWords.includes(w.w)).length;
+                            const total = unit.words.length;
+                            const isComplete = learned === total;
+                            const prevDone = idx === 0 || WORD_DATA[idx-1].words.every(w => learnedWords.includes(w.w));
+                            const isLocked = !prevDone;
+                            const pct = Math.round((learned / total) * 100);
+
+                            return (
+                                <div key={unit.id} style={{ display:'flex', flexDirection:'column', alignItems:'center', width:'100%' }}>
+                                    {/* Connector line */}
+                                    {idx > 0 && (
+                                        <div style={{ width:4, height:32, background: prevDone ? unit.bg + '55' : 'var(--card-border)', borderRadius:99, margin:'0 0' }} />
+                                    )}
+
+                                    <div style={{ display:'flex', alignItems:'center', gap:20, width:'100%', maxWidth:320 }}>
+                                        {/* Offset alternate units for visual path */}
+                                        <div style={{ flex: idx % 2 === 0 ? '0 0 0px' : '1' }} />
+
+                                        <button
+                                            className={`unit-node ${isLocked ? 'locked' : ''}`}
+                                            style={{
+                                                background: isLocked ? '#e2e8f0' : isComplete ? '#fbbf24' : unit.bg,
+                                                boxShadow: isLocked ? 'none' : `0 8px 0 ${isComplete ? '#b45309' : unit.shadow}, 0 2px 20px ${unit.bg}55`,
+                                                flexShrink: 0,
+                                            }}
+                                            onClick={() => !isLocked && startLesson(unit.id)}
+                                        >
+                                            {isLocked ? '🔒' : isComplete ? '⭐' : unit.words[0].e}
+                                        </button>
+
+                                        <div style={{ flex: idx % 2 === 0 ? '1' : '0 0 0px' }} />
+
+                                        {/* Label beside node */}
+                                        <div style={{ minWidth:100, textAlign: idx % 2 === 0 ? 'left' : 'right' }}>
+                                            <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:15, color: isLocked ? 'var(--muted)' : 'var(--ink)' }}>{unit.title}</div>
+                                            {!isLocked && (
+                                                <div style={{ marginTop:6 }}>
+                                                    <div style={{ fontSize:11, color:'var(--muted)', fontWeight:600, marginBottom:4 }}>{learned}/{total} words</div>
+                                                    <div className="progress-bar" style={{ width:90 }}>
+                                                        <div className="progress-fill" style={{ width:`${pct}%`, background: isComplete ? '#fbbf24' : unit.bg }} />
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                        {/* Bottom Nav */}
-                        <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-slate-100 p-2 flex justify-around">
-                            <NavButton icon={Map} label="Learn" onClick={() => setView('map')} />
-                            <NavButton active icon={Book} label="Words" onClick={() => setView('dict')} />
-                        </div>
-                    </div>
-                );
-            }
-
-            // 2. LESSON VIEW
-            if (view === 'lesson') {
-                const card = lessonQueue[currentCardIndex];
-                
-                // TEACH MODE CARD
-                if (card.type === 'learn') {
-                    return (
-                        <div className="max-w-md mx-auto min-h-screen bg-green-500 flex flex-col items-center justify-center p-8 text-white relative">
-                            <div className="animate-in slide-in w-full max-w-sm">
-                                <h2 className="text-center font-bold text-green-100 mb-8 uppercase tracking-widest">New Word!</h2>
-                                <div className="bg-white text-slate-800 rounded-3xl p-8 flex flex-col items-center gap-6 shadow-2xl">
-                                    <div className="text-8xl mb-2">{card.word.e}</div>
-                                    <div className="text-center">
-                                        <h1 className="text-5xl font-black text-slate-700 mb-2">{card.word.w}</h1>
-                                        <p className="text-xl text-slate-500 font-medium">{card.word.m}</p>
-                                    </div>
-                                    <div className="w-full h-1 bg-slate-100 rounded-full my-2"></div>
-                                    <Button onClick={handleNext}>I got it!</Button>
-                                </div>
-                            </div>
-                        </div>
-                    );
-                }
-
-                // QUIZ MODE CARD
-                return (
-                    <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col">
-                        {/* Header */}
-                        <div className="p-4 flex items-center gap-4">
-                            <X className="text-slate-300 cursor-pointer" onClick={() => setView('map')} />
-                            <div className="h-3 flex-1 bg-slate-100 rounded-full overflow-hidden">
-                                <div className="h-full bg-green-500 transition-all duration-300" style={{ width: `${((currentCardIndex + 1) / lessonQueue.length) * 100}%` }}></div>
-                            </div>
-                            <div className="flex items-center gap-1 text-red-500 font-bold"><div className="fill-current">❤️</div> {hearts}</div>
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 p-6 flex flex-col">
-                            <h2 className="text-2xl font-bold text-slate-700 mb-8">{card.prompt}</h2>
-                            <div className="grid grid-cols-2 gap-4">
-                                {card.options.map(opt => (
-                                    <button 
-                                        key={opt.w}
-                                        onClick={() => lessonStatus === 'idle' && setSelectedOption(opt.w)}
-                                        className={`
-                                            p-6 rounded-2xl border-2 border-b-4 flex flex-col items-center gap-2 transition-all
-                                            ${selectedOption === opt.w ? 'border-blue-400 bg-blue-50' : 'border-slate-200 hover:bg-slate-50'}
-                                            ${lessonStatus === 'correct' && opt.w === card.correct ? 'bg-green-100 border-green-500' : ''}
-                                            ${lessonStatus === 'wrong' && selectedOption === opt.w ? 'bg-red-100 border-red-500' : ''}
-                                        `}
-                                    >
-                                        <span className="text-5xl mb-2">{opt.e}</span>
-                                        <span className="font-bold text-lg text-slate-600">{opt.w}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Footer Feedback */}
-                        <div className={`border-t-2 p-6 pb-8 ${lessonStatus === 'idle' ? 'bg-white' : lessonStatus === 'correct' ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'}`}>
-                            {lessonStatus !== 'idle' && (
-                                <div className="mb-4 flex gap-4 items-center animate-in slide-in">
-                                    <div className={`p-2 rounded-full ${lessonStatus === 'correct' ? 'bg-green-500' : 'bg-red-500'} text-white`}>
-                                        {lessonStatus === 'correct' ? <Check /> : <X />}
-                                    </div>
-                                    <div className="font-bold text-xl text-slate-700">
-                                        {lessonStatus === 'correct' ? 'Excellent!' : `Answer: ${card.correct}`}
-                                    </div>
-                                </div>
-                            )}
-                            <Button 
-                                onClick={lessonStatus === 'idle' ? handleCheck : (hearts > 0 ? handleNext : () => setView('map'))}
-                                variant={lessonStatus === 'wrong' ? 'danger' : 'primary'}
-                                disabled={lessonStatus === 'idle' && !selectedOption}
-                            >
-                                {lessonStatus === 'idle' ? 'Check' : hearts > 0 ? 'Continue' : 'Quit'}
-                            </Button>
-                        </div>
-                    </div>
-                );
-            }
-
-            // 3. SUMMARY VIEW
-            if (view === 'summary') {
-                return (
-                    <div className="min-h-screen bg-yellow-400 flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
-                        <div className="text-8xl mb-4 animate-bounce">🏆</div>
-                        <h1 className="text-4xl font-extrabold text-yellow-800 mb-8">Unit Complete!</h1>
-                        <div className="bg-white/20 p-6 rounded-2xl w-full mb-8 backdrop-blur-sm">
-                            <p className="text-yellow-900 font-bold">You are learning fast!</p>
-                        </div>
-                        <Button onClick={() => setView('map')} className="bg-yellow-600 border-yellow-800 text-white">Continue</Button>
-                    </div>
-                );
-            }
-
-            // 4. MAP VIEW (Home)
-            return (
-                <div className="max-w-md mx-auto min-h-screen bg-white flex flex-col pb-24 border-x border-slate-50">
-                    {/* Top Bar */}
-                    <div className="p-4 flex justify-between items-center border-b border-slate-100 bg-white sticky top-0 z-10">
-                        <div className="flex gap-2">
-                             <div className="bg-slate-100 p-2 rounded-xl">🇹🇰</div>
-                        </div>
-                        <div className="flex gap-4 font-bold">
-                            <span className="text-red-500 flex items-center gap-1">❤️ {hearts}</span>
-                            <span className="text-orange-500 flex items-center gap-1">🔥 1</span>
-                        </div>
-                    </div>
-
-                    {/* The Path */}
-                    <div className="flex-1 p-8 flex flex-col items-center gap-8">
-                        {WORD_DATA.map((unit, idx) => {
-                            // Calculate unit progress
-                            const unitWordCount = unit.words.length;
-                            const learnedCount = unit.words.filter(w => learnedWords.includes(w.w)).length;
-                            const isCompleted = learnedCount === unitWordCount;
-                            const isLocked = idx > 0 && !WORD_DATA[idx-1].words.every(w => learnedWords.includes(w.w));
-                            
-                            return (
-                                <div key={unit.id} className="relative flex flex-col items-center z-0">
-                                    {/* Connecting Line */}
-                                    {idx < WORD_DATA.length - 1 && <div className="absolute h-24 w-3 bg-slate-200 -z-10 top-16 rounded-full" />}
-                                    
-                                    <button 
-                                        onClick={() => !isLocked && startLesson(unit.id)}
-                                        className={`
-                                            w-24 h-24 rounded-full border-b-8 flex items-center justify-center shadow-xl transition-transform active:translate-y-2 active:border-b-0
-                                            ${isLocked 
-                                                ? 'bg-slate-200 border-slate-300 text-slate-400' 
-                                                : isCompleted 
-                                                    ? 'bg-yellow-400 border-yellow-600 text-white'
-                                                    : `${unit.color} border-black/20 text-white hover:scale-105`
-                                            }
-                                        `}
-                                    >
-                                        {isLocked ? <Lock size={32} /> : isCompleted ? <Check size={40} strokeWidth={4} /> : <Star size={40} fill="currentColor" />}
-                                    </button>
-                                    
-                                    <div className="mt-3 text-center">
-                                        <h3 className="font-bold text-slate-700 text-lg">{unit.title}</h3>
-                                        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{learnedCount}/{unitWordCount} Words</div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             );
                         })}
                     </div>
 
-                    {/* Bottom Nav */}
-                    <div className="fixed bottom-0 w-full max-w-md bg-white border-t border-slate-100 p-2 flex justify-around">
-                        <NavButton active icon={Map} label="Learn" onClick={() => setView('map')} />
-                        <NavButton icon={Book} label="Words" onClick={() => setView('dict')} />
+                    <BottomNav active="map" setView={() => {}} />
+                </div>
+            );
+        }
+
+        function DictView({ learnedWords, setView }) {
+            const [search, setSearch] = useState('');
+
+            return (
+                <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100dvh', background:'var(--paper)', display:'flex', flexDirection:'column', paddingBottom:80 }}>
+                    <div style={{ padding:'20px 20px 12px', background:'white', borderBottom:'2px solid var(--card-border)', position:'sticky', top:0, zIndex:10 }}>
+                        <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:22, letterSpacing:'-0.03em', marginBottom:12 }}>Dictionary</div>
+                        <input
+                            type="text"
+                            placeholder="Search words…"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
+                            style={{ width:'100%', padding:'10px 14px', borderRadius:12, border:'2px solid var(--card-border)', fontFamily:'Sora', fontSize:14, outline:'none', background:'var(--paper)' }}
+                        />
+                        <div style={{ fontSize:12, color:'var(--muted)', marginTop:8, fontWeight:600 }}>{learnedWords.length} / {TOTAL_WORDS} unlocked</div>
+                    </div>
+
+                    <div style={{ padding:'12px 16px', display:'flex', flexDirection:'column', gap:20 }}>
+                        {WORD_DATA.map(group => {
+                            const filtered = group.words.filter(w =>
+                                !search || w.w.includes(search.toLowerCase()) || w.m.toLowerCase().includes(search.toLowerCase())
+                            );
+                            if (!filtered.length) return null;
+                            return (
+                                <div key={group.id}>
+                                    <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:11, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.1em', marginBottom:8, paddingLeft:4 }}>{group.title}</div>
+                                    <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                                        {filtered.map(word => {
+                                            const unlocked = learnedWords.includes(word.w);
+                                            return (
+                                                <div key={word.w} className="card" style={{ display:'flex', alignItems:'center', gap:14, opacity: unlocked ? 1 : .55 }}>
+                                                    <span style={{ fontSize:28, lineHeight:1 }}>{unlocked ? word.e : '🔒'}</span>
+                                                    <div style={{ flex:1 }}>
+                                                        <div style={{ fontFamily:'Syne', fontWeight:800, fontSize:16 }}>{word.w}</div>
+                                                        <div style={{ fontSize:13, color:'var(--muted)', marginTop:2 }}>{unlocked ? word.m : 'Complete the lesson to unlock'}</div>
+                                                    </div>
+                                                    {unlocked && <span style={{ fontSize:11, fontWeight:700, color:'var(--green)', background:'#f0fdf4', padding:'3px 8px', borderRadius:99 }}>✓</span>}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <BottomNav active="dict" setView={setView} />
+                </div>
+            );
+        }
+
+        function LearnCard({ card, onNext }) {
+            const [anim, setAnim] = useState(false);
+            useEffect(() => { setAnim(true); }, []);
+
+            return (
+                <div style={{ minHeight:'100dvh', background:`linear-gradient(160deg, ${card.word.e ? '#f0fdf4' : '#fff'} 0%, white 60%)`, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:28 }}>
+                    <div style={{ fontSize:12, fontFamily:'Syne', fontWeight:800, letterSpacing:'.15em', textTransform:'uppercase', color:'var(--green)', marginBottom:24 }}>
+                        ✦ New Word ✦
+                    </div>
+
+                    <div className={anim ? 'slide-up' : ''} style={{ width:'100%', maxWidth:340 }}>
+                        <div className="teach-card">
+                            <div style={{ fontSize:88, lineHeight:1, marginBottom:4 }}>{card.word.e}</div>
+                            <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:52, letterSpacing:'-0.04em', color:'var(--ink)' }}>{card.word.w}</div>
+                            <div style={{ color:'var(--muted)', fontSize:17, fontWeight:500, textAlign:'center', maxWidth:220, lineHeight:1.5 }}>{card.word.m}</div>
+                            <div style={{ width:'100%', height:2, background:'var(--card-border)', borderRadius:99, margin:'8px 0' }} />
+                            <div style={{ fontSize:12, color:'#94a3b8', fontStyle:'italic' }}>tap to continue</div>
+                        </div>
+                    </div>
+
+                    <div style={{ marginTop:32, width:'100%', maxWidth:340 }}>
+                        <button className="btn btn-primary" onClick={onNext}>Got it! →</button>
                     </div>
                 </div>
             );
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
+        function QuizCard({ card, idx, total, hearts, onCheck, onNext, status }) {
+            const [selected, setSelected] = useState(null);
+            const footerRef = useRef(null);
+
+            // Reset selection on new card
+            useEffect(() => { setSelected(null); }, [card]);
+
+            const handleSelect = (w) => {
+                if (status !== 'idle') return;
+                setSelected(w);
+            };
+
+            const pct = ((idx + 1) / total) * 100;
+
+            return (
+                <div style={{ maxWidth:480, margin:'0 auto', minHeight:'100dvh', background:'white', display:'flex', flexDirection:'column' }}>
+                    {/* Header */}
+                    <div style={{ padding:'16px 20px', display:'flex', alignItems:'center', gap:12 }}>
+                        <button onClick={() => onNext('quit')} style={{ background:'none', border:'none', color:'var(--muted)', cursor:'pointer', padding:4, fontSize:20, lineHeight:1 }}>✕</button>
+                        <div className="progress-bar" style={{ flex:1 }}>
+                            <div className="progress-fill" style={{ width:`${pct}%` }} />
+                        </div>
+                        <Hearts total={5} remaining={hearts} />
+                    </div>
+
+                    {/* Content */}
+                    <div style={{ flex:1, padding:'24px 20px 0' }}>
+                        <div style={{ marginBottom:8, fontSize:12, fontFamily:'Syne', fontWeight:800, color:'var(--muted)', textTransform:'uppercase', letterSpacing:'.08em' }}>Choose the correct word</div>
+                        <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:26, letterSpacing:'-0.02em', marginBottom:6 }}>{card.meaning}</div>
+                        <div style={{ fontSize:36, marginBottom:28 }}>{card.emoji}</div>
+
+                        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                            {card.options.map(opt => {
+                                let extra = '';
+                                if (status !== 'idle') {
+                                    if (opt.w === card.correct) extra = 'correct';
+                                    else if (selected === opt.w && status === 'wrong') extra = 'wrong';
+                                } else if (selected === opt.w) {
+                                    extra = 'selected';
+                                }
+                                return (
+                                    <button key={opt.w} className={`opt-btn ${extra}`} onClick={() => handleSelect(opt.w)}>
+                                        <span style={{ fontSize:42, lineHeight:1 }}>{opt.e}</span>
+                                        <span style={{ fontFamily:'Syne', fontWeight:800, fontSize:17, color:'var(--ink)' }}>{opt.w}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div ref={footerRef} style={{
+                        padding:'20px 20px 28px',
+                        borderTop: status !== 'idle' ? `3px solid ${status === 'correct' ? '#bbf7d0' : '#fecaca'}` : '2px solid var(--card-border)',
+                        background: status === 'correct' ? '#f0fdf4' : status === 'wrong' ? '#fef2f2' : 'white',
+                        transition: 'background .2s, border-color .2s',
+                    }}>
+                        {status !== 'idle' && (
+                            <div className="slide-up" style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+                                <div style={{ width:40, height:40, borderRadius:99, background: status === 'correct' ? 'var(--green)' : '#ef4444', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18, color:'white', flexShrink:0 }}>
+                                    {status === 'correct' ? '✓' : '✕'}
+                                </div>
+                                <div>
+                                    <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:17, color: status === 'correct' ? '#15803d' : '#b91c1c' }}>
+                                        {status === 'correct' ? 'Excellent! 🎉' : 'Not quite!'}
+                                    </div>
+                                    {status === 'wrong' && <div style={{ fontSize:13, color:'var(--muted)', marginTop:2 }}>Correct: <strong>{card.correct}</strong></div>}
+                                </div>
+                            </div>
+                        )}
+                        <button
+                            className={`btn ${status === 'wrong' ? 'btn-danger' : 'btn-primary'}`}
+                            disabled={status === 'idle' && !selected}
+                            onClick={() => {
+                                if (status === 'idle') onCheck(selected);
+                                else onNext(status);
+                            }}
+                        >
+                            {status === 'idle' ? 'Check' : hearts <= 0 ? 'End Lesson' : 'Continue →'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function LessonView({ unit, learnedWords, onFinish }) {
+            const queue = useRef(buildLessonQueue(unit, learnedWords)).current;
+            const [idx, setIdx] = useState(0);
+            const [hearts, setHearts] = useState(5);
+            const [status, setStatus] = useState('idle'); // idle | correct | wrong
+            const [newWords, setNewWords] = useState([]);
+
+            const card = queue[idx];
+
+            const handleCheck = (selected) => {
+                if (selected === card.correct) {
+                    setStatus('correct');
+                } else {
+                    setStatus('wrong');
+                    setHearts(h => Math.max(0, h - 1));
+                }
+            };
+
+            const advance = useCallback((result) => {
+                if (result === 'quit') { onFinish(newWords, false); return; }
+
+                // Track newly learned words from learn cards
+                let updated = newWords;
+                if (card.type === 'learn' && !learnedWords.includes(card.word.w) && !newWords.includes(card.word.w)) {
+                    updated = [...newWords, card.word.w];
+                    setNewWords(updated);
+                }
+
+                if (idx < queue.length - 1) {
+                    setIdx(i => i + 1);
+                    setStatus('idle');
+                } else {
+                    onFinish(updated, true);
+                }
+            }, [idx, card, newWords, learnedWords, queue, onFinish]);
+
+            if (card.type === 'learn') {
+                return <LearnCard card={card} onNext={() => advance('learn')} />;
+            }
+
+            return (
+                <QuizCard
+                    card={card}
+                    idx={idx}
+                    total={queue.length}
+                    hearts={hearts}
+                    status={status}
+                    onCheck={handleCheck}
+                    onNext={advance}
+                />
+            );
+        }
+
+        function SummaryView({ unitTitle, newCount, onContinue }) {
+            return (
+                <div style={{ minHeight:'100dvh', background:'linear-gradient(160deg, #fef9c3, #fef3c7 60%, #fde68a)', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:32, textAlign:'center' }}>
+                    <div style={{ fontSize:90, lineHeight:1, marginBottom:8, animation:'pop .4s ease' }}>🏆</div>
+                    <div style={{ fontFamily:'Syne', fontWeight:900, fontSize:32, letterSpacing:'-0.03em', color:'#78350f', marginBottom:8 }}>
+                        Unit Complete!
+                    </div>
+                    <div style={{ color:'#92400e', fontSize:16, fontWeight:500, marginBottom:32 }}>{unitTitle}</div>
+
+                    <div className="card" style={{ width:'100%', maxWidth:320, marginBottom:32, background:'rgba(255,255,255,.6)', backdropFilter:'blur(8px)' }}>
+                        {newCount > 0
+                            ? <p style={{ fontWeight:600, color:'#78350f' }}>You learned <strong>{newCount} new word{newCount !== 1 ? 's' : ''}</strong> this lesson! Keep it up 🌱</p>
+                            : <p style={{ fontWeight:600, color:'#78350f' }}>Great review! You're solidifying your knowledge. 💪</p>
+                        }
+                    </div>
+
+                    <button className="btn btn-primary" style={{ maxWidth:320, background:'#d97706', border:'none' }} onClick={onContinue}>
+                        Continue →
+                    </button>
+                </div>
+            );
+        }
+
+        // ─────────────────────────────────────────────────────────
+        //  APP
+        // ─────────────────────────────────────────────────────────
+        function App() {
+            const [view, setView] = useState('map'); // map | dict | lesson | summary
+            const [activeUnit, setActiveUnit] = useState(null);
+            const [learnedWords, setLearnedWords] = useState(() => {
+                try { return JSON.parse(localStorage.getItem('tp_learned') || '[]'); }
+                catch { return []; }
+            });
+            const [lastNewCount, setLastNewCount] = useState(0);
+
+            // Persist progress
+            useEffect(() => {
+                try { localStorage.setItem('tp_learned', JSON.stringify(learnedWords)); }
+                catch {}
+            }, [learnedWords]);
+
+            const startLesson = (unitId) => {
+                setActiveUnit(WORD_DATA.find(u => u.id === unitId));
+                setView('lesson');
+            };
+
+            const finishLesson = (newWords, completed) => {
+                setLearnedWords(prev => {
+                    const merged = [...prev];
+                    newWords.forEach(w => { if (!merged.includes(w)) merged.push(w); });
+                    return merged;
+                });
+                setLastNewCount(newWords.length);
+                setView(completed ? 'summary' : 'map');
+            };
+
+            if (view === 'lesson' && activeUnit) {
+                return <LessonView unit={activeUnit} learnedWords={learnedWords} onFinish={finishLesson} />;
+            }
+
+            if (view === 'summary') {
+                return <SummaryView unitTitle={activeUnit?.title} newCount={lastNewCount} onContinue={() => setView('map')} />;
+            }
+
+            if (view === 'dict') {
+                return <DictView learnedWords={learnedWords} setView={setView} />;
+            }
+
+            return (
+                <div>
+                    <MapView learnedWords={learnedWords} startLesson={startLesson} />
+                    <BottomNav active="map" setView={setView} />
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
     </script>
 </body>
 </html>
