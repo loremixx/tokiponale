@@ -314,8 +314,20 @@ function daysUntil(ts) {
 const shuffle = a => [...a].sort(()=>Math.random()-.5);
 const wFind = key => WORDS.find(w=>w.w===key);
 
+// Tüm kelimeler öğrenilmiş mi kontrol et (cümle için)
+function sentenceWordsKnown(sentence, knownSet) {
+    const allWords = sentence.type === 'build'
+        ? sentence.answer
+        : [...sentence.sentence.filter(t => t !== '___'), ...sentence.opts];
+    // Her kelime ya bilinen kelimelerden ya da partikül (li,e,pi,la,en,o,anu,taso,ala)
+    // Partiküller bu sessiyonda öğretiliyor olabilir, o yüzden cümle içeriğine bak
+    // Cümlede geçen NON-partikül kelimelerin hepsi knownSet'te olmalı
+    const PARTICLES = new Set(['li','e','pi','la','en','o','anu','taso','ala']);
+    const contentWords = allWords.filter(w => !PARTICLES.has(w));
+    return contentWords.every(w => knownSet.has(w));
+}
+
 function buildSessionQueue(unit, srsCards, allLearned) {
-    // srsCards: {wordKey: {interval, nextReview, errors}}
     const queue = [];
     const unitWords = unit.wk.map(wFind).filter(Boolean);
 
@@ -333,21 +345,25 @@ function buildSessionQueue(unit, srsCards, allLearned) {
         .sort((a,b)=>(srsCards[b.w]?.errors||0)-(srsCards[a.w]?.errors||0))
         .slice(0, 3);
 
-    // Build: for each new word → teach → quiz immediately → sentence (if available)
+    // Build: for each new word → teach → quiz immediately
     newWords.forEach(word => {
         queue.push({ type:'teach', word });
-        // quiz: pick TP from Turkish (no translations on options)
         const d = shuffle(WORDS.filter(w=>w.w!==word.w)).slice(0,3);
         queue.push({ type:'pick_tp', word, prompt:word.m, correct:word.w, options:shuffle([word,...d]) });
-        // quiz: pick Turkish from TP
         const d2 = shuffle(WORDS.filter(w=>w.w!==word.w)).slice(0,3);
         queue.push({ type:'pick_tr', word, prompt:word.w, correct:word.m,
             options:shuffle([{k:word.w,l:word.m},...d2.map(x=>({k:x.w,l:x.m}))]) });
     });
 
-    // Sentence exercises for this unit
+    // Sentence exercises: ONLY sentences whose content words are all known
+    // Known = already learned + newly being taught this session
+    const knownAfterSession = new Set([...allLearned, ...newWords.map(w=>w.w)]);
     const sentenceIds = unit.sx || [];
-    const sentences = shuffle(sentenceIds.map(id=>SENTENCES.find(s=>s.id===id)).filter(Boolean)).slice(0,4);
+    const eligibleSentences = sentenceIds
+        .map(id => SENTENCES.find(s => s.id === id))
+        .filter(Boolean)
+        .filter(s => sentenceWordsKnown(s, knownAfterSession));
+    const sentences = shuffle(eligibleSentences).slice(0, 4);
     sentences.forEach(s => queue.push({ type:'sentence', sentence:s }));
 
     // Reviews and error words → quiz only
@@ -356,10 +372,9 @@ function buildSessionQueue(unit, srsCards, allLearned) {
         queue.push({ type:'pick_tp', word, prompt:word.m, correct:word.w, options:shuffle([word,...d]), isReview:true });
     });
 
-    // Final mixed sentence round if new words exist
-    if (newWords.length > 0 && sentences.length > 0) {
-        const extra = shuffle(sentences).slice(0,2);
-        extra.forEach(s => queue.push({ type:'sentence', sentence:s, isRepeat:true }));
+    // Final sentence repeat round
+    if (sentences.length > 0) {
+        shuffle(sentences).slice(0, 2).forEach(s => queue.push({ type:'sentence', sentence:s, isRepeat:true }));
     }
 
     return queue;
@@ -556,10 +571,17 @@ function FillCard({ card, idx, total, hearts, color, status, onCheck, onNext }) 
                     {card.opts.map(opt=>{
                         let cls = sel===opt&&status==='idle'?'sel':'';
                         if(status!=='idle'){ if(opt===card.answer) cls='cor'; else if(sel===opt) cls='wrg'; }
+                        // Kısa, net anlam — partiküller için özel etiketler
+                        const PARTICLE_HINTS = {
+                            li:'özne→yüklem', e:'nesne işareti', pi:'sıfat grubu',
+                            la:'bağlam eki', en:'ve (özne)', o:'emir/seslenme',
+                            anu:'veya', taso:'ama/sadece', ala:'değil/mı?'
+                        };
+                        const meaning = PARTICLE_HINTS[opt] || (wFind(opt)?.m?.split(',')[0] || '');
                         return (
-                            <button key={opt} className={`gopt ${cls}`} style={{padding:'16px 12px'}} onClick={()=>status==='idle'&&setSel(opt)}>
-                                <span style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:22,color:'var(--tx)'}}>{opt}</span>
-                                <span style={{fontSize:12,color:'var(--tx2)',marginTop:2}}>{wFind(opt)?.m?.split(',')[0]||''}</span>
+                            <button key={opt} className={`gopt ${cls}`} style={{padding:'14px 10px'}} onClick={()=>status==='idle'&&setSel(opt)}>
+                                <span style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:20,color:'var(--tx)'}}>{opt}</span>
+                                <span style={{fontSize:11,color:'var(--tx2)',marginTop:3,textAlign:'center',lineHeight:1.3}}>{meaning}</span>
                             </button>
                         );
                     })}
@@ -631,12 +653,30 @@ function BuildCard({ card, idx, total, hearts, color, status, onCheck, onNext })
 
                 {/* Word bank */}
                 <div style={{marginTop:18,display:'flex',flexWrap:'wrap',gap:8}}>
-                    {bank.map(tile=>(
-                        <button key={tile.id} className={`tile ${tile.used?'used':''}`} onClick={()=>!tile.used&&placeTile(tile)}
-                            style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:16,opacity:tile.used?.25:1}}>
-                            {tile.word}
-                        </button>
-                    ))}
+                    {bank.map(tile=>{
+                        const PARTICLE_HINTS = {
+                            li:'özne→yüklem', e:'nesne', pi:'sıfat grubu',
+                            la:'bağlam', en:'ve (özne)', o:'emir',
+                            anu:'veya', taso:'ama', ala:'değil/mı?'
+                        };
+                        const hint = PARTICLE_HINTS[tile.word] || (wFind(tile.word)?.m?.split(',')[0] || '');
+                        return (
+                            <button key={tile.id}
+                                onClick={()=>!tile.used&&placeTile(tile)}
+                                style={{
+                                    padding:'8px 12px', borderRadius:10,
+                                    border:`2px solid ${tile.used?'var(--bd)':'var(--bd)'}`,
+                                    background: tile.used ? 'var(--sf2)' : 'var(--sf)',
+                                    cursor: tile.used ? 'default' : 'pointer',
+                                    opacity: tile.used ? 0.2 : 1,
+                                    display:'flex', flexDirection:'column', alignItems:'center', gap:2,
+                                    transition:'opacity .15s',
+                                }}>
+                                <span style={{fontFamily:"'Lora',serif",fontWeight:700,fontSize:15,color:'var(--tx)'}}>{tile.word}</span>
+                                {hint && <span style={{fontSize:10,color:'var(--tx2)',lineHeight:1.2}}>{hint}</span>}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
             <FeedbackBar status={status} correctLabel={answer.join(' ')} hearts={hearts}
@@ -720,11 +760,9 @@ function buildReviewQueue(srsCards, learned) {
                 options:shuffle([{k:key,l:word.m},...d2.map(x=>({k:x.w,l:x.m}))]), isReview:true });
         }
     });
-    // Add some sentence exercises too
-    const dueSentences = shuffle(SENTENCES.filter(s => {
-        const wordsInSentence = s.type==='build'? s.answer : s.sentence;
-        return wordsInSentence.some(w=>due.includes(w));
-    })).slice(0,4);
+    // Add sentence exercises — only where all content words are learned
+    const knownSet = new Set(learned);
+    const dueSentences = shuffle(SENTENCES.filter(s => sentenceWordsKnown(s, knownSet))).slice(0, 4);
     dueSentences.forEach(s=>queue.push({type:'sentence',sentence:s}));
     return shuffle(queue);
 }
